@@ -1,3 +1,196 @@
 #+TITLE: Lecture 1
 #+AUTHOR: Karl Hallsby
 #+DATE: March 23, 2020
+
+* To Pass this Course
+  * Pass all 5 laboratories
+  * Pass all 3 programming assignments (3 ECTS)
+  * Pass the exams (4.5 ECTS)
+
+* Laboratories
+  * Strict descriptions
+  * Which functions
+  * Why Functions
+
+* Programming Assignment
+  * Much more complicated than Laboratories
+  * Figure out problem
+  * Design solution
+  * Build/Implement
+  * Test
+
+* Exercises
+  * Available later this week (Probably Wednesday)
+  * Online, at the course website
+
+* Administrative Information
+  * Pass every lab
+    - Done in pairs
+    - Examination done individually
+  * "Interrogation" of material
+  * Mandatory
+  * Digital
+  * Also using Canvas
+  * Programming Assignments mandatory
+    - Not the hardest things in the world. Assignments:
+      1) 15 hours per person
+      2) 10 hours per person
+      3) 6 hours per person
+    - Verification
+      1) By us
+      2) By machine
+      3) By TA
+    - MaiL (EDAN95) edaf95@cs.lth.se / (EDAN40) fp@cs.lth.se *ONLY WITH* working solutions to assignments.
+      + These mailboxes are *NOT* read by humans.
+      + This does not mail a person.
+  * Observe deadlines strictly
+
+* Textbooks, by relation to course materials
+  1) Graham Hutton's, /Programming in Haskell/
+  2) O'Sullivan, Steward, Goerzen, /Real World Haskell/
+  3) Miran Lipovaca, /Learn You a Haskell for Great Good!/
+  4) Chiusano, Bjarnason, /Functional Programming in Scala/
+  5) Thompson, /Haskell - The Craft of Functional Programming/
+
+* Software
+  * Glasgow Haskell Compiler, ghc
+  * Interpreter, ghci
+  * Install Haskell Platform or haskell-stack
+  * Version doesn't matter for us, so long as it is above version 7
+
+* Suggestions
+  * Read the *ENTIRE* programming assignment *BEFORE* you begin coding
+  * Read the assignment *AFTER* the official announcement date
+  * Check the course website
+
+* What is Functional Programming?
+"Functional programming is so called because a program consists entirely of functions. [...] These functions are much like ordinary mathematical funcctions [...] defined by ordinary equations."
+(John Hughes)
+  * Mathematical functions
+    - Can be formally prove
+
+This partly means *NO ASSIGNMENTS* that can cause *SIDE EFFECTS*.
+
+** What is a function?
+Let $A$ and $B$ be arbitrary sets.
+Any subsec of $A \times B$ will be called a /relation/ from $A$ to $B$.
+A relation $ \subset A \times B$ is a /function/ *if and only if*
+\forall x \in A \, \forall y_1, y_w \in B (((x, y_1) \in R \wedge (x, y_2) \in R) \rightarrow (y_1 = y_2)
+
+ *Not all functions return values*
+
+** How are functions defined?
+#+BEGIN_SRC haskell
+factorial 0 = 1 -- For argument 0, return 1
+factorial n = n * factorial (n-1) -- For any other argument, return n * ((n-1) * ((n-1-1) * ... * (n-n)))
+
+-- If we call factorial 3, what happens?
+-- We can show what happens with REWRITE SEMANTICS
+-- f 3 = 3 * f 2
+--     = 3 * 2 * f 1
+--     = 6 * 1 * f 0
+--     = 6 * 1
+--     = 6
+#+END_SRC
+
+** The Use of Functions and Recursion
+   * Mathematical Induction: Pattern begins with some value
+     - Used for *PROVING* properties of functions.
+   * Computational Recursion: We can compute the function we can define.
+   * Mathematical Recursion: Used to construct functions, typically they are recursive too.
+
+** Rewrite Semantics
+   * How do we extract values from functions?
+
+** Equality vs. Assignment
+The `=' symbol has different meanings in Functional Programming Languages.
+In functional languages, =, is the mathematical definition of equivalence.
+Whereas in imperative languages = is the assignment of values to memory locations.
+
+** Side Effects
+#+BEGIN_SRC c
+public int f(int x) {
+	int t1 = g(x) + g(x);
+	int t2 = 2 * g(x);
+	return t1-t2;
+}
+// We should probably get 0 back.
+// f(x) = t1-t2 = g(x) + g(x) - 2*g(x) = 0
+
+// But, if g(x) is defined like so,
+public int g(int x) {
+	int y = input.nextInt();
+	return y;
+}
+// The two instances of g(x) (g(x) + g(x)) can be different values
+#+END_SRC
+
+** "Variables" in Functional locations
+   * Variables are *NAMED* expressions
+   * Not locations in memory
+
+** Core Functional Programming
+   * Functional = ordinary programming, without assignments and side effects
+   * Provide good support for:
+     - Higher order functions
+       + Functions that take functions as arguments and return functions as expressions
+       + Used frequently
+       + Currying
+       + How to use effectively?
+     - Infinite data structures
+       + Nice idea that is easily proven in functional languages
+     - Lazy evaluation
+       + Only evaluate expressions *ONLY WHEN NEEDED*
+       + This also allow us to deal with idea of infinite data structures
+
+*** Recursion
+ It is *VERY EASY* to write recursive functions using pattern matching on the arguments provided.
+ #+BEGIN_SRC haskell
+sum1 [] = 0
+sum1(x:xs) = x + (sum1 xs)
+ #+END_SRC
+   * /Recursion/ is intimately tied to computability
+   * [] is the *EMPTY LIST*
+   * (x:xs) is a very important idiom in Functional programming
+     - x is the single value we are dealing with
+     - xs is the rest of the xs. (Pronounced x-ess)
+   * Recursion happens over the length of the entire list
+
+ #+BEGIN_SRC haskell
+accumulate f i [] = i -- i serves as an initial value, to start the accumulation from
+-- Apply the accumulation function using a function
+-- accumulate:: Int->(Int->Int)->Int->[Int]->Int
+accumulate f i (x:xs) = f x (accumulate f i xs)
+
+-- Now that accumulate is written,
+sum2 = accumulate (+) 0 -- Written this way, the function with name sum2 will behave the same as sum1
+-- sum 2 is now a FUNCTION that takes in a list and returns the accumulated value of all elements
+
+product2 = accumulate (*) 1 -- Product of all terms in a given list
+anyTrue2 = accumulate (||) False -- Are any elements true?
+allTrue2 = accumulate (&&) True -- Are ALL elements true, or any untrue?
+ #+END_SRC
+
+*** Infinite Data Structures
+    * Primes to comptue with Eratosthenes Sieve
+#+BEGIN_SRC haskell
+primes = sieve [2..] -- Infinite list of natural numbers, starting from 2
+         where
+           sieve (n:ns) =
+               n : sieve [x | x <- ns, (x 'mod' n) > 0]
+-- If x is divisible by n, then it is NOT a prime
+-- If x is NOT divisible by n, then it must be a prime
+
+#+END_SRC
+
+Given an arbitrary number of inputs, produce infinite sums
+x, y, z, ... -> x, x+y, x+y+z, ...
+#+BEGIN_SRC haskell
+runningSums xs = theSolution
+    where theSolution = zipWidth (+) xs (0:theSolution)
+#+END_SRC
+
+Taylor series of exponential functions
+#+BEGIN_SRC haskell
+eExp x = runningSums [(x^i)/fac(i) | i <- [0..]]
+#+END_SRC

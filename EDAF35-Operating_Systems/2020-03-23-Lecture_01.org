@@ -2,4 +2,25 @@
 #+AUTHOR: Karl Hallsby
 #+DATE: March 23, 2020
 
-*
+* Labs
+  * Work on Lab 0 by yourself.
+  * Can work in pairs, don't have to.
+  * Show labs online
+    - Break-out Labs
+  * Either send link to git repo, or the dockerfile you use
+  *
+
+* Project
+  * Work on own time
+  * Submit/Present when done
+    - Not necessarily before the exam
+
+* Exam
+  * Time-constrained Home Assignment
+  * Dedicated lecture for preparation
+  * Previous Exams available
+  * Will be different from previous exams, because home assignment
+
+* Module 1
+  * Introduction
+  * Organization

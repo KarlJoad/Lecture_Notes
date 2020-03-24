@@ -2,4 +2,151 @@
 #+AUTHOR: Karl Hallsby
 #+DATE: March 24, 2020
 
-*
+* Loops
+In a loop, you perform some action on a set of items, perhaps ordered some number of times.
+
+The MOST Imperative way
+#+BEGIN_SRC c
+for(int i = 0; i < COUNT_OF(customerNames); i++) {
+	printf("%s\n", customerNames[i]);
+}
+#+END_SRC
+Here, there is a lot of "state housekeeping" that must be done to handle things.
+
+The Object Way
+#+BEGIN_SRC javascript
+foreach(name in customerNames) {
+    Console.WriteLine(name);
+}
+#+END_SRC
+
+The Functional Way
+#+BEGIN_SRC haskell
+customerNames.ForEach(Console.WriteLine);
+#+END_SRC
+
+* Haskell Functions
+#+BEGIN_SRC haskell
+sumInts :: [Int] -> Int -- Type Signature of the function
+sumInts [] = 0
+sumInts (n:ns) = n + (sumInts ns)
+
+concatenate :: [String] -> String -- Type Signature of function
+concatenate [] = ""
+concatenate (x:xs) = x ++ (concatenate xs)
+#+END_SRC
+
+Both of these are quite similar.
+Common aspects to both:
+  * Function combines 2 values into one
+  * Base case
+
+This is actually a standard function, fold.
+#+BEGIN_SRC haskell
+fold :: (a -> a -> a) -> a -> [a] -> a
+-- a is a Type Variable. It is a variable that describes a type in a type system.
+-- (a -> a -> a) is a function that takes 2 arguments of the same type and returns a third
+-- a is the "base" value, when we have the empty list.
+-- [a] is the list we are going to work with
+-- a is the result from fold
+fold _ base [] = base
+fold f base (x:xs) = f x (fold f base xs)
+
+concatenate xs = fold (++) "" xs
+sum ns = fold (+) 0 ns
+product ns = fold (*) 1 ns
+#+END_SRC
+
+Point-free version does not refer to the objects used directly.
+Instead, yo ujust apply the funciton to the whole structure.
+
+* Functional Pattersn in Haskell
+Many of the most common higher-order functions for applying operations are already defined.
+  * map
+  * concatMap
+  * filter - Take some elements away, according to a predicate/property
+  * takeWhile - Take elements "out" of a list while some predicate is true
+  * all - Logical operation
+  * any - Logical operation
+  * zipWith - Combine lists and put elements into a tuple.
+  * iterate - Takes a function and an initial value, and applies the function
+  * foldr - Folding to the right
+  * foldl - Folding to the left
+
+These patterns are starting to be used in other, more imperative programming languages.
+
+* The 8 (n) Queens Problem
+By placing queens
+#+BEGIN_SRC haskell
+okToAdd :: Int -> [Int] -> Bool
+-- Int: Row we are working on
+-- [Int]: The current solutions, likely partial, we already have
+-- Bool: Is it OK to add here?
+okToAdd q qs = (okToAddLevel q qs) &&
+               (okToAddUpDiag q qs) &&
+               (okToAddDownDiag q qs)
+#+END_SRC
+
+To go along the diagonal, for each row in any direction, record the column.
+When we have reached the end of the board, we compare that list with our partial solution.
+If there is ANY element that matches, then our current position is NOT a solution
+
+#+BEGIN_SRC haskell
+okToAddUpDiag :: Int -> [Int] -> Bool
+okToAddUpDiag q qs = and $ zipWith(/=) (tail $ iterate succ q) qs
+-- Apply the and to the results of the inequality from the lists
+-- interate succ q => [q, q+1, q+2, ...]
+
+okToAddDownDiag :: Int -> [Int] -> Bool
+okToAddDownDiag q qs = and $ zipWith(/=) (tail $ iterate pred q) qs
+-- iterate pred q => [q, q-1, q-2, ...]
+#+END_SRC
+
+These look quite similar, so we should make a higher-order function.
+#+BEGIN_SRC haskell
+okToAddGivenDir :: Int -> [Int] -> (Int -> Int) -> Bool
+okToAddGivenDir q qs f = and $ zipWith (/=) tail ($ iterate f q) qs
+#+END_SRC
+
+But all of those tests look similar
+#+BEGIN_SRC haskell
+okToAdd q qs = all (okToAddGivenDir q qs) [succ, pred, id]
+-- Equivalent to
+-- okToAdd q qs = (okToAddLevel q qs) &&
+--                (okToAddUpDiag q qs) &&
+--                (okToAddDownDiag q qs)
+#+END_SRC
+
+** Now we want to extend the solution
+Take a partial solution, and find all ways to extend the solution.
+#+BEGIN_SRC haskell
+extendSolution :: [Int] -> [[Int]]
+-- Given the partial solution [Int]
+-- Return all possible next queen placements
+extendSolution qs = map (:qs) $ filter (`okToAdd` qs) [0..7]
+-- the (:qs) will append the current partial solution to the `okToAdd` solutions found.
+-- extendSolution [] => [[0], [1], ..., [7]]
+
+-- filter takes a predicate, and a list. It returns all elements that satisfy the predicate.
+-- filter even [0..7] => [0, 2, 4, 6]
+-- map takes a function and a list, and applies the function to evey element in the list
+-- map (*2) [1, 2, 3] => [2, 4, 6]
+#+END_SRC
+
+Now that we can find all the possible extensions to our current partial solution, we need to solve for all partials.
+#+BEGIN_SRC haskell
+allSolutions 0 = [[]]
+allSolutions n = concatMap extendSolution (allSolutions (n-1))
+-- Create all solutions with n-1 queues
+-- Extend those solutions
+-- Merge all of these into one list of partial solutions
+#+END_SRC
+
+But this is similar to what we had above.
+#+BEGIN_SRC haskell
+allSolutions :: Int -> [[Int]]
+allSolutions n = (iterate (concatMap extendSolution) [[]]) !! n
+-- Iterate with the extendSolution, an infinite number of times, starting from placing 0 queens
+-- Then, we just peel out the nth element from that list, and get the list of all possible solutions
+-- for that number of queens.
+#+END_SRC

@@ -1,0 +1,5 @@
+#+TITLE: Lecture 1.5 Notes
+#+AUTHOR: Karl Hallsby
+#+DATE: March 24, 2020
+
+*

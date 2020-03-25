@@ -103,9 +103,9 @@ factorial n = n * factorial (n-1) -- For any other argument, return n * ((n-1) *
    * How do we extract values from functions?
 
 ** Equality vs. Assignment
-The `=' symbol has different meanings in Functional Programming Languages.
-In functional languages, =, is the mathematical definition of equivalence.
-Whereas in imperative languages = is the assignment of values to memory locations.
+The ~=~ symbol has different meanings in Functional Programming Languages.
+In functional languages, ~=~, is the mathematical definition of equivalence.
+Whereas in imperative languages ~=~ is the assignment of values to memory locations.
 
 ** Side Effects
 #+BEGIN_SRC c
@@ -150,10 +150,10 @@ sum1 [] = 0
 sum1(x:xs) = x + (sum1 xs)
  #+END_SRC
    * /Recursion/ is intimately tied to computability
-   * [] is the *EMPTY LIST*
-   * (x:xs) is a very important idiom in Functional programming
-     - x is the single value we are dealing with
-     - xs is the rest of the xs. (Pronounced x-ess)
+   * ~[]~ is the *EMPTY LIST*
+   * ~(x:xs)~ is a very important idiom in Functional programming
+     - ~x~ is the single value we are dealing with
+     - ~xs~ is the rest of the ~xs~. (Pronounced x-ess)
    * Recursion happens over the length of the entire list
 
  #+BEGIN_SRC haskell

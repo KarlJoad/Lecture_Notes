@@ -62,16 +62,16 @@ Instead, yo ujust apply the funciton to the whole structure.
 
 * Functional Pattersn in Haskell
 Many of the most common higher-order functions for applying operations are already defined.
-  * map
-  * concatMap
-  * filter - Take some elements away, according to a predicate/property
-  * takeWhile - Take elements "out" of a list while some predicate is true
-  * all - Logical operation
-  * any - Logical operation
-  * zipWith - Combine lists and put elements into a tuple.
-  * iterate - Takes a function and an initial value, and applies the function
-  * foldr - Folding to the right
-  * foldl - Folding to the left
+  * ~map~
+  * ~concatMap~
+  * ~filter~ - Take some elements away, according to a predicate/property
+  * ~takeWhile~ - Take elements "out" of a list while some predicate is true
+  * ~all~ - Logical operation
+  * ~any~ - Logical operation
+  * ~zipWith~ - Combine lists and put elements into a tuple.
+  * ~iterate~ - Takes a function and an initial value, and applies the function
+  * ~foldr~ - Folding to the right
+  * ~foldl~ - Folding to the left
 
 These patterns are starting to be used in other, more imperative programming languages.
 

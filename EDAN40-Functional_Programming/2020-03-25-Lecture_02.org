@@ -1,3 +1,302 @@
 #+TITLE: Lecture 2
 #+AUTHOR: Karl Hallsby
 #+DATE: March 25, 2020
+
+* Typing
+  * Strongly typed
+  * Statically typed
+  * Type declarations optional
+    - You may have to declare it if it may be ambiguous
+    - You may have to declare it if *YOU* want to force certain operations/actions to occur.
+  * Type checking enforced with type inferencing
+    - The compiler will figure out the type of every expression
+    - It can usually figure ALL of them out on its own
+    - Derive a system of type equations
+    - Solve the system of type equations
+
+** Polymorphic Types
+   * The type of the function ~(.)~
+   * Type variables are denoted with lowercase single letters
+     - Type variables can be Functions, Integers, Numbers, Characters, Strings, etc.
+     - Any type we create can be used here too
+     - We can also force these polymorphic types to have certain values.
+#+BEGIN_SRC haskell
+(f.g) x = f (g x)
+-- (b -> c) -> (a -> b) -> a -> c
+#+END_SRC
+
+** Tuples
+   * Fixed number of elements
+   * Each element can be any type
+#+BEGIN_SRC haskell
+(4, "four") :: (Int, String)
+#+END_SRC
+
+** Lists
+   * Infinite number of elements
+   * Each element must be the same type
+#+BEGIN_SRC haskell
+[1, 2, 3, 4] -- Numbers 1, 2, 3, 4
+[1..10] -- All integers from 1 to 10
+[1,3..10] -- All integers from 1 to 10, stepping in steps of 2. [1, 3, 5, 7, 9]
+[2..]::Int -- All Ints from 2 to Int max size
+#+END_SRC
+
+   * Denoted with the ~[]~ symbols, with a type between them.
+   * Lend themselves to recursion
+
+*** Standard List Functions
+#+BEGIN_SRC haskell
+-- filter keeps all elements that make the predicate true
+filter even [1..] -- Makes a list of all even numbers
+
+-- map applies a function to every element in a list
+map doublePlusOne [1..3]
+
+-- Folding aplpies a function to each element of the list, then brings it all together
+
+-- zip takes 2 lists, and combines them
+-- The shortest list is the limiting list, i.e. the resulting list is no longer than the
+-- shortest provided.
+#+END_SRC
+
+*** List Comprehensions
+    * Nice way to define lists that fulfill some properties.
+#+BEGIN_SRC haskell
+allIntPairs = [(i, j) | i <-[0..], j<-[0..i]]
+-- Generates all pairs, [(0,0), (1, 0), (1, 1), ...]
+-- j has an upper bound of whatever i is in that run
+
+eExp x = runningSums [(x^i) / (fac i) | i <-[0..]]
+#+END_SRC
+
+*** Infinite Lists
+#+BEGIN_SRC haskell
+--Mathematical definition of an infinite list of ones
+ones1 = 1:ones1
+
+ones2 = [1,1..]
+
+-- Construct an infinite list from the elements filtered from ns, where
+-- the predicate is that x is not a factor of n.
+-- These 2 expressions are equivalent
+sieve1 (n:ns) = n: sieve1 (filter (\x -> x `mod` n > 0) ns)
+sieve2 (n:ns) = n:sieve2[x | x<- ns, (x `mod` n) > 0]
+#+END_SRC
+
+** Strings
+   * List of characters, with special syntax
+#+BEGIN_SRC haskell
+--String = [Char]
+--"Common Lisp" = ['C', 'o', ... 'p']
+#+END_SRC
+
+** Enumerated Types
+   * Build a new type that has options
+   * Can only have one option at a time
+   * These are not tagged in the same way as Enumerated Types in SML are tagged.
+   * Though, they are still strongly typed.
+   * Have function ~succ~ and ~pred~ defined for you to cycle through the options
+   * Each of the options present in the enum are type constructors
+#+BEGIN_SRC haskell
+data Color = Red
+           | Green
+           | Blue
+           | Yellow
+           | Black
+           | White
+#+END_SRC
+
+** Algebraic Datatypes
+   * Parameterized types
+   * Generalize enumerated types
+#+BEGIN_SRC haskell
+data Price = Euro Int Int
+           | Dollar Int Int
+
+Dollar 5 50
+#+END_SRC
+
+** Recursive Type Definitions
+   * Recursive data types are easy to construct with algebraic datatypes
+#+BEGIN_SRC haskell
+data IntTree = IntEmpty -- There is no node here.
+             | IntNode Int IntTree IntTree -- A node that contains an Int and 2 subtrees
+
+-- The same thing, but polymorphic
+data Tree a = Empty
+            | Node a (Tree a) (Tree a)
+#+END_SRC
+
+** Type Synonyms
+   * Provide a way to define a new type name for a type already existing
+#+BEGIN_SRC haskell
+-- Name is a type synonym for String.
+-- Only used for making your code more legible.
+type Name = String
+#+END_SRC
+
+** Qualified Types
+   * If you define a type using data, you don't assume anything.
+     - When we defined color, we assumed that there were 6 colors that came in a particular order
+#+BEGIN_SRC haskell
+-- Function elem that takes a value and a list of values
+-- Are there any x that is equal to an element in xs?
+(Eq a) => a -> [a] -> Bool -- The (Eq a) => is the qualified type.
+-- The underlying type a, MUST be part of the Eq typeclass
+-- These are all the types that have equality defined
+elem x xs = any (==x) xs
+#+END_SRC
+
+** Typeclasses
+   * They are a specification of constraints for types
+   * Wherever that typeclass is used, the class is guaranteed to have an implementation of these functions
+   * Similar to Java Interfaces
+#+BEGIN_SRC haskell
+class Eq a where
+    (==), (/=) :: a -> a -> Bool
+    x /= y = not (x == y) -- When we define this first one, we also get the second one for free
+    x == y = not (x /= y)
+#+END_SRC
+
+*** Class Instance
+    * How we define a certain type to be of a certain typeclass
+    * This must define what the operation means for that type.
+#+BEGIN_SRC haskell
+instance Eq Bool where
+    True == True = True
+    False == False = True
+    _ == _ = False
+#+END_SRC
+
+*** Subclassing
+    * We can have a tree of constraints
+    * We can introduce more structure to our types
+#+BEGIN_SRC haskell
+ -- Every instance of a type in the Ord typeclass must also be part of the Eq typeclass
+class (Eq a) => Ord a where
+    (<), (<=), (>=), (>) ... -- The constraints are specified here
+#+END_SRC
+
+* Conventions
+  * Type names start with a capital letter
+    - Int
+    - Integer
+    - Char
+    - Fractional
+  * Expressions names begin with a lowercase letter
+    - average
+
+* Operators and Functions
+  * Already defined
+    - Infix
+      + Called operators
+      + *THEY ARE ALSO FUNCTIONS*
+      + 2+3
+    - Prefix
+      + and True True
+    - You can switch between the 2 fixities
+      + You can make + prefix by saying (+)
+      + Function From Operator
+	+ add1 = (+)
+	+ (+) 2 3 = 2+3
+      + Operator From Function
+	+ 2 `add1` 3
+
+** Curried Functions
+   * Parentheses avoided at all costs, for notational clarity
+   * For example, f a b is read ((f a) b)
+#+BEGIN_SRC haskell
+f a b
+{- Read ((f a) b)
+   Evaluate function f with argument a, take the result from that and evaluate that function
+   with the argument b
+   If g = f a, then f a b = g b
+ -}
+
+-- Different than the below
+f (a, b) -- Function f takes one argument, the ordered pair/tuple (a, b)
+f (a b) -- Function f takes the result from the evaluation of the function a with argument b
+#+END_SRC
+
+   * This allows for partial application of functions with their arguments.
+     - Creates a closure
+#+BEGIN_SRC haskell
+inc1 = (+1)
+-- Now every use of inc1 with a parameter will increment the parameter by 1
+-- inc1 5 => 6
+#+END_SRC
+   * This also means by giving different arguments, we get different expressiosn
+#+BEGIN_SRC haskell
+div2 = (/2)
+twoDiv = (2/)
+-- div2 and twoDiv ARE NOT THE SAME
+
+-- div2 4 => 2
+-- twoDiv => 0.5
+#+END_SRC
+
+** Function Composition
+   * Take 2 function and create a new one out of it
+   * Start with the highest precedence operator, evaluate that first
+   * Then read from left-to-right
+#+BEGIN_SRC haskell
+doublePlusOne = (+1).(2*)
+-- We DO NOT need to provide an argument
+#+END_SRC
+
+** Lambda Expressions
+   * Nameless functions
+#+BEGIN_SRC haskell
+-- Denoted by \ args -> operation(s)
+incAll = map (\ i -> i+1)
+-- Given a list of numbers, increment all of them by 1
+#+END_SRC
+
+** Pattern-Based Definitions
+   * Allow us to define things based on the patterns things can take in their cases
+   * This works particularly well for enumerated types and algebraic datatypes.
+   * It is easy to define the functions for a given type constructor.
+#+BEGIN_SRC haskell
+count 1 = "one"
+count 2 = "two"
+count _ = "many" -- Anything other than 1 or 2 will match this
+#+END_SRC
+
+** Guards
+   * Another way to choose.
+   * They are evaluated in order, so if ~otherwise~ is first, nothing below it will be evaluated.
+   * Take different paths of execution
+#+BEGIN_SRC haskell
+oddOrEven in
+          | odd i = "odd"
+          | even i = "even"
+          | otherwise = "strange" -- otherwise is the "Default" case
+#+END_SRC
+
+** Local definitions
+#+BEGIN_SRC haskell
+isPythagorean1 a b c =
+    (sq a) + (sq b) == (sq c)
+    where sq x = x*x -- Define a squaring functino in the context of isPythagorean1
+
+isPythagorean2 a b c =
+    let sq x = x*x -- Let the function sq exist inside the in
+    in (sq a) + (sq b) == (sq c)
+#+END_SRC
+
+** Indentation
+   * Indentation denotes the continuation of a previous set o flines
+   * This is true, unless brace notation is used.
+   * ~let~, ~where~, ~do~, ~of~ being layout blocks
+
+* Input/Output
+  * Abstract datatype ~a~ of the typeclass ~IO~ of I/O Action
+  *
+#+BEGIN_SRC haskell
+putChar :: Char -> IO() -- IO operation of IO unit
+-- The () is "empty", it has one element that is a unit
+-- The type provided is not important
+getChar :: IO char -- The thing returned by the function is impure
+-- The character is gotten with the side-effect defined by IO.
+#+END_SRC

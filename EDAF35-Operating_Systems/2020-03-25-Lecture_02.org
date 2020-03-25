@@ -1,0 +1,137 @@
+#+TITLE: Lecture 2
+#+AUTHOR: Karl Hallsby
+#+DATE: March 25, 2020
+
+* Pointers
+  * Pointers allow for a level of indirection.
+  * You store the *ADDRESS* of the thing in a pointer.
+#+BEGIN_SRC c
+#include <stdio.h>
+
+int main() {
+	int x = 12;
+	int *p;
+	p = &x;
+	*p = 13;
+	printf("Pointer * 2 = %d\tVariable * 2 = %d\n", (*p * 2), (x * 2));
+	// The numbers above will BOTH be 26, because the *p=13 update affected both.
+	return x * 2;
+}
+#+END_SRC
+
+** Pointer Arithmetic
+   * Pointer arithmetic works based on the type declared for the thing.
+#+BEGIN_SRC c
+#include <stdio.h>
+#include <string.h>
+
+int main() {
+	int a[10];
+	double b[10];
+	int *p;
+	int *end;
+	p = &a[4];
+	p++; // p now points to a[5].
+	p = p + 1; // The "1" is actually the size (in bytes) of the type of the pointer.
+	end = &a[10];
+	while (p < end) {
+
+	}
+
+	/* Pointers cannot mix their types with the data they point to.
+	 ,* Thus, the pointer q, below, cannot point to anything in the a array.
+	 ,*/
+	double *q;
+	a = &b[4];
+	q += 1; // q incremented to b[5], which is 8 bytes.
+
+	// The compiler will not change pointer types.
+	// ANSI C Aliasing Rules: The little block below is forbidden.
+	// With the exception of pointing to a single byte using a char*
+	q = &b[2];
+	,*q = 3.14;
+	p = (int*)&b[2]; // p views b[2] as an integer
+	,*p = 0;
+	printf("*q = %lf\n", *q);
+	/* DO NOT try to typecast pointers. You'll have a bad time.
+	 */
+
+	char *s; // The char pointer is somewhat more privileged to change things
+	s = a;
+	s[0] = 0;
+	// This ability is used by the memcpy library
+	memcpy(a, b, 10); // Copies 10 bytes FROM b TO a
+}
+#+END_SRC
+
+** Pointer Types
+   * When declaring pointers, put the asterisk left of the variable name
+#+BEGIN_SRC c
+int x;
+int *p; // Create a pointer pointing to an int
+p = &x; // Redirect pointer to the address of x
+*p; // Get the value that p is pointing to
+#+END_SRC
+
+** The void Pointer
+#+BEGIN_SRC c
+int main() {
+	void* t;
+	char* s;
+	int* p;
+	double* q;
+	t = s;
+	p = q; // Disallowed
+}
+#+END_SRC
+
+   * The void pointer can point to ANYTHING other than functions.
+   * This means the void pointer can point to int*, double*, etc.
+
+** freeing Memory
+   * Make with malloc or calloc, the memory will exist until it is freed by someone
+   * You do not need to call free() in the same function where you allocate the memory
+
+#+BEGIN_SRC c
+int main(){
+	list_t* head;
+	head = new_list(); // The new_list() function will call malloc, and won't free it
+	// Using the list
+	free(head); // Will only remove the head node
+	// So a function is created for the object to free all memory
+	free_list(head);
+}
+#+END_SRC
+
+* Structs
+#+BEGIN_SRC c
+struct list_t{
+	struct list_t* next; // Point to the next node of the same list_t type
+	void* data; // Point to any kind of data
+};
+
+struct list_t* make_node(){
+	struct list_t* p;
+}
+
+int main(){
+	struct list_t stackStruct; // NOT A POINTER, the struct itself
+	stackStruct.next = NULL; // Accessed with dot and attribute
+	stackStruct.data = "abc"; // Because it's a void pointer, anything storable
+
+	struct list_t* heapStruct;
+	heapStruct = malloc(sizeof(struct list_t)); // Allocate memory for struct on heap
+	heapStruct->next = NULL;
+	heapStruct->data = "def";
+	// Actually means (*heapStruct).data = "def"
+	(*heapStruct).data = "ghi";
+	// Cannot say *heapStruct.data, because it sees it as *(heapStruct.data)
+}
+#+END_SRC
+
+* References
+  * *DOES NOT EXIST* in C, only in C++.
+  * Essentially pointers, but you don't really have to worry about pointer syntax.
+  * Cannot change what it references
+  * Cannot do pointer arithmetic
+  * Must be initialized with a value when the reference is created

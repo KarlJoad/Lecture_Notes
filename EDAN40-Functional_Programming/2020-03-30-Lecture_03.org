@@ -2,4 +2,315 @@
 #+AUTHOR: Karl Hallsby
 #+DATE: Month 30, 2020
 
-*
+* Indentation
+  * Important
+  * What matters is the alignment of the indented code
+  * The first think
+#+BEGIN_SRC haskell
+main = do foo 1
+          foo 2
+          if pizza
+             -- indented further
+             then foo 3
+          else foo 3
+          bar 5;
+baz = fafafa
+#+END_SRC
+
+* Modules
+  * Each Haskell program is a collection of *modules*
+  * Each module is an organizational unit, controlling namespaces
+  * There *must* be one module called ~Main~ and *must* export the value ~main~
+  * Exporting an expression makes it globally visible (to any thing that ~import~ it)
+#+BEGIN_SRC haskell
+module A (x, y) where
+    x, y :: Int -> Int
+    x = (+1)
+    y = (*2)
+#+END_SRC
+
+  * A module declares which entities is exports, implicitly all
+  * ~import expression~ makes exported entities available in another module
+#+BEGIN_SRC haskell
+-- If you import this way, the functions become available
+import A
+import A() -- Import A without importing functions
+import A(x) -- Import only x from A
+
+-- Functions must have the qualifier A.x to be used
+import qualified A
+import qualified A(x)
+
+-- Import a whole module, EXCEPT for an expression
+import A hiding ()
+import A hiding (x)
+
+-- Import a module, and rename it
+import A as B
+import A as B(x) -- All uses of x from A must be written B.x
+
+import qualified A as B -- Anywhere we would say A.something, we can say B.something
+#+END_SRC
+
+* The Prelude.hs Module
+  * The Standard Prelude is a module available in *every* Haskell implemention by the Haskell Language Specification
+  * Always implicitly imported by all modules, unless there is an explicit import
+  * This includes:
+    1) Core type definitions
+    2) ~PreludeList~
+    3) ~PreludeText~
+    4) ~PreludeIO~
+  * Most of these things are purely presentational, making things easier to read
+  * Lets you do the general operations easily, list construction for instance.
+
+#+BEGIN_SRC haskell
+id :: a -> a -- Always returns it argument, unchanged
+const :: a -> b -> a -- Takes a constant, and every later call returns the original argument
+
+(.) :: (b -> c) -> (a -> b) -> a -> c
+{- The first argument (b -> c) is a function
+   The second argument (a -> b) is ALSO a function
+ -}
+
+curry :: ((a, b) -> c) -> a -> b -> c
+-- Converts an uncurried function and returns a function that is curried
+
+uncurry :: (a -> b -> c) -> ((a, b) -> c)
+-- Converts a curried function and returns a function that is uncurried
+
+($) :: (a -> b) -> a -> b
+f x $ g y = f x (g y)
+{- Whatever is on the right-side of the $ is interpretted as a "value" by the
+   function on the left-hand side
+ -}
+#+END_SRC
+
+** Using ~$~
+#+BEGIN_SRC haskell
+f $ x = f x
+(f . g) x = f (g x)
+
+putStrLn (take 8 (map foo (bar ++ "ack")))
+-- Can be rewritten to
+putStrLn $ take 8 $ map foo $ bar ++ "ack"
+-- or
+(putStrLn . take 8 . map foo) (bar ++ "ack")
+
+-- THIS IS THE PREFERABLE WAY
+putStrLn . take 8 . map foo $ bar ++ "ack"
+#+END_SRC
+
+   * This is because ~$~ has the *lowest priority*
+
+** Enumerated Types
+   * Types that let you enumerate things
+   * They all belong to the ~Enum~ typeclass
+   * You can "count" elements of the class
+   * There is a mapping that can be made from these elements to the natural numbers
+#+BEGIN_SRC haskell
+enumFrom :: Enum a => a -> [a]
+-- Allows [n..]
+
+enumFromThen :: Enum a => a -> a -> [a]
+-- Allows [m, n..]
+
+enumFromThenTo :: Enum a => a -> a -> a -> [a]
+-- Allows [m, n..o]
+
+enumFromTo :: Enum a => a -> a -> [a]
+-- Allows [m..n]
+#+END_SRC
+
+** Pairs
+#+BEGIN_SRC haskell
+fst :: (a, b) -> a
+snd :: (a, b) -> b
+#+END_SRC
+
+** Union Types
+#+BEGIN_SRC haskell
+data Either a b = Left a
+                | Right b
+
+either :: (a -> c) -> (b -> c) -> Either a b -> c
+either f g (Left x) = f x
+either f g (Right y) = g y
+
+-- We Restrict the types possible in isNull by the type signature
+isNull :: either String Integer -> Bool
+isNull = either (=="") (==0)
+#+END_SRC
+
+#+BEGIN_SRC haskell
+data Maybe a = Nothing
+             | Just a
+
+maybe :: b -> (a -> b) -> Maybe a -> b
+maybe 0 (+1) (Just 1) = 2
+
+lookup :: Eq a => a -> [(a, b)] -> Maybe b
+#+END_SRC
+
+** Lists
+#+BEGIN_SRC haskell
+length :: [a] -> Int
+-- length "Abc" = 3
+
+elem :: (Eq a) => a -> [a] -> Bool
+notElem :: (Eq a) => a -> [a] -> Bool
+-- 'a' `elem` "abc" = true
+
+(!!) :: [a] -> Int -> [a]
+
+(++) :: [a] -> [a] -> [a]
+
+concat :: [[a]] -> [a]
+-- concat ["a", "bc", "d"] = "abcd"
+
+(:) :: a -> [a] -> [a]
+
+head :: [a] -> a
+tail :: [a] -> [a]
+init :: [a] -> [a]
+last :: [a] -> a
+
+filter :: (a -> Bool) -> [a] -> [a]
+-- Take the predicate, and find all elements that make the predicate true in a list
+
+map :: (a -> b) -> [a] -> [b]
+foldl :: (a -> b -> a) -> a -> [b] -> a
+-- foldl (+) 0 [a, b, c] = ((0 + a) + b) + c
+foldr :: (a -> b -> b) -> b -> [a] -> b
+-- foldr (+) 0 [a, b, c] = a + (b + (c+0))
+scanl :: (a -> b -> a) -> a -> [b] -> [a]
+scanr :: (a -> b -> b) -> b -> [a] -> [b]
+
+zip :: [a] -> [b] -> [(a, b)]
+
+repeat :: a -> [a]
+-- Unlimited. repeat 'a' => "aaaaa..."
+replicate :: Int -> a -> [a]
+-- Limit the repetition
+cycle :: [a] -> [a]
+-- cycle "abc" = "abcabcabc..."
+iterate :: (a -> a) -> a -> [a]
+-- iterate (++ " ") "" = ["", " ", "  ", ..]
+until :: (a -> Bool) -> (a -> a) -> a -> a
+-- until (> 3) (+2) 0 = 4
+-- Iterate until some preducate is satisfied
+
+take :: Int -> [a] -> [a]
+drop :: Int -> [a] -> [a]
+splitAt :: Int -> [a] -> ([a], [a])
+-- Split a list at some point
+takeWhile :: (a -> Bool) -> [a] -> [a]
+-- Perform take while a predicate is true
+dropWhile :: (a -> Bool) -> [a] -> [a]
+-- Perform drop function while predicate is true
+
+span :: (a -> Bool) -> [a] -> ([a], [a])
+-- Split a list at a point defined by the predicate
+-- span isAlpha "ab cd" = ("ab", " cd")
+break :: (a -> Bool) -> [a] -> ([a], [a])
+-- Break a list at a point where the predicate is false
+-- break (>=2) [1, 2, 3] = ([1], [2,3])
+
+sum :: (Num a) => [a] -> a
+product :: (Num a) => [a] -> a
+and :: [Bool] -> Bool
+or :: [Bool] -> Bool
+
+-- Map the predicate to the provided lists
+-- Perform `and` or `or` on the resulting [Bool]
+all :: (a -> Bool) -> [a] -> Bool
+any :: (a -> Bool) -> [a] -> Bool
+#+END_SRC
+
+** Strings
+#+BEGIN_SRC haskell
+words :: String -> [String]
+-- words "ab c as+3" = ["ab", "d", "as+3"]
+unwords :: [String] -> String
+#+END_SRC
+
+** To and from Text
+#+BEGIN_SRC haskell
+show :: (Show a) => a -> String
+-- If the type a is part of the Show typeclass, then you can print out the object
+-- Most objects from the Prelude object are printable
+-- Functions cannot be printed, because they are not part of the Show typeclass
+
+read :: (Read a) => String -> a
+-- The opposite of Show
+-- Given a String, can the thing be read by the system?
+-- Convert the String to type a
+-- Convert a number "3.14" :: String to 3.14 :: Float
+#+END_SRC
+
+** Basic I/O
+#+BEGIN_SRC haskell
+-- Printing/Output
+putChar :: Char -> IO ()
+putStr :: String -> IO ()
+putStrLn :: String -> IO () -- Also prints a \n at the end
+
+-- Reading/Input
+getChar :: IO Char
+-- EOF generates an IOError
+getLint :: IO String
+-- EOF generates an IO Error
+#+END_SRC
+
+   * The ~()~ is the empty tuple, *unit*.
+   * The type of ~()~ is also ~()~
+
+*** Sequencing I/O
+    * The ~IO~ type constructor is an instance of the ~Monad~ class
+    * There are 2 monadic binding functions
+    * ~>>~ is used when the first operation is uninteresting, for example ~()~
+    * ~>>=~ passes the result of the first operation as an argument to the second
+#+BEGIN_SRC haskell
+(>>=) :: IO a -> (a -> IO b) -> IO b
+(>>) :: IO a -> IO b -> IO b
+#+END_SRC
+
+** Do-Notation
+   * ~do~ is syntactic sugar for bind ~(>>=)~ and then ~(>>)~
+#+BEGIN_SRC haskell
+main = do putStr "Input file: "
+          ifile <- getLine
+          putStr "Output file: "
+          ofile <- getLine -- Not really assignment, but rather extraction function
+          s <- readFile ifile
+          writeFile ofile (filter isAscii s)
+          putStrLn "Filtering successful"
+#+END_SRC
+
+#+BEGIN_SRC haskell
+echoReverse = do
+  aLine <- getLine
+  putStrLn (reverse aLine)
+
+echoReverse' =
+    getLine >>= \aLine -> putStrLn (reverse aLine)
+#+END_SRC
+
+* Libraries and Their Organization
+  1) Standard Prelude
+  2) Haskell 2010 Langauge Definition (Part II)
+  3) GHC
+  4) The Haskell Platform
+     * Comes with a set of libraries
+  5) Hackage
+
+* Precedence levels
+  1) 9: ~.~ Highest
+  2) 8: ~^~, ~^^~, ~..~
+  3) 7: Multiplication, Division
+  4) 6: Addition/Subtraction
+  5) 5: ~:~
+  6) 4: Equality/Relations
+  7) 3: AND
+  8) 2: OR
+  9) 1: ~>>~, ~>>=~, ~=<<~
+  10) 0: ~$~, ~$!~, ~`seq`~ Lowest

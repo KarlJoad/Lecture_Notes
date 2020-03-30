@@ -1,0 +1,5 @@
+#+TITLE: Lecture 3
+#+AUTHOR: Karl Hallsby
+#+DATE: Month 30, 2020
+
+*

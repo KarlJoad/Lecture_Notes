@@ -1,0 +1,25 @@
+#+TITLE: Lecture 3
+#+AUTHOR: Karl Hallsby
+#+DATE: Month 30, 2020
+
+* Questions Asked on Padlet
+  +
+    * fork()  return value is 0 for the child and PID of child is returned to the parent?
+    * Are we only getting one return value from fork()?
+    * It looks like two values are assigned, one to the parent, one to the child, but the if/else is checking one value?
+If something goes wrong, a negative value is returned.
+No process is created then.
+
+  + Everything is copied by fork()
+Yeah, pretty much.
+
+  + ~exec()~ system call
+    + When thread invokes exec() system call, current process gets replaced entirely with a new process, the book says that the threads also get replaced.
+    + Does this mean that any work that other threads are doing gets terminated
+    + Threads are somehow destroyed?
+All threads are killed, and the job is executed.
+This new thread is the one performing all the work.
+
+  + ~exec()~ with threads
+~fork()~ can be used without using an ~exec()~, thereby creating a new process and not changing the executing program.
+~exec()~ will delete all threads in the program.

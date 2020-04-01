@@ -1,0 +1,5 @@
+#+TITLE: Lecture 4
+#+AUTHOR: Karl Hallsby
+#+DATE: April 01, 2020
+
+*

@@ -2,4 +2,301 @@
 #+AUTHOR: Karl Hallsby
 #+DATE: April 01, 2020
 
-*
+* Type Systems
+  * Type system is a collection of rules that assign a property called a type to constructs
+  * A type system is a tractable syntactic method for proving the absencce of certain program behaviors.
+  * It does this by classifying phrases according to the kinds of values they compute.
+    - Tractable = Computable/algorithmic
+    - Syntactic = Does not address the computations the program performs
+
+* Haskell's Typing
+** Type System
+   * Static type
+   * Type inferencing performed -> runtime errors
+   * Workflow: Edit and typecheck instead of edit and test
+   * There are still run-time errors, but these are things like divide-by-zero
+
+** Type Theory
+   * Hindley-Milner type system
+   * Type inference algorithm W
+   * Origin from haskell Curry and typed lambda calculus
+   * Deduces the most general type, without type annotations
+   * Complete
+
+*** Time Complexity
+    * Linear time complexity
+    * For bounded nesting of ~let~-bindings is polynominal time complexity
+    * For "Pathological" inputs: exponential time complexity
+
+** Type Inferencing
+   * Given that we know the types a function expects, we can find types of the inputs
+\frac{f :: a \rightarrow B \:\: e :: A}{f \, e :: B}
+
+** The Basic Types
+   1) ~Bool~, Logical values.
+   2) ~Char~, Single characters.
+   3) ~String~, List of single characters.
+   4) ~Int~, Signed 32/64-bit integers.
+   5) ~Integer~, Signed arbitrary-bit integers. (Can grow infinitely)
+   6) ~Float~, Single-precision Floating-Point numbers.
+   7) ~Double~, Double-precision Floating-Point numbers.
+   8) ~[]~, Lists.
+   9) ~a~, Type variable.
+   10) ~(a, b)~, Tuple, pair in this case.
+   11) ~f :: a -> b~, Function.
+
+   12) ~(+) (:)~ is ~:: Num (a -> [a] -> [a]) => (a -> [a] -> [a]) -> a -> [a] -> [a]~
+   13) ~((.):)~ is ~:: [(b -> c) -> (a -> b) -> a -> c] -> [(b -> c) -> (a -> b) -> a -> c]~
+       - Partial application of ~:~ operator
+       - Applied to ~(.)~ as its first argument
+       - ~(:) :: a-> [a] -> [a]~
+       - ~(.) :: (b -> c) -> (a -> b) -> a -> c~
+       - ~((.):) :: [(b -> c) -> (a-> b) -> a -> c]~
+
+** Type Declarations
+   1) Type synonym
+      ~type Name = String~
+   2) Algebraic Datatype
+      ~data Season = Spring | Summer | Autumn | Winter~
+   3) Renamed Datatype
+      ~newtype Name = Nm String~
+      * Same as ~data~ with a single unary constructor.
+      * Better performance as there is no runtime bookkeeping of a separate type.
+
+** Qualified Types
+   * Typeclasses
+     ~elem :: (Eq a) => a -> [a] -> Bool~
+   * Qualification is needed on ~a~ to ensure that an equality test defined
+     ~elem sin [sin, cos, tan, cot]~ causes a type error, since each of these elements is a function
+
+** Defining Field Labels
+   * The below data types are identical
+   * Except ~C2~ also gives you "deconstructor" functions
+#+BEGIN_SRC haskell
+data C = F Int Int Bool
+
+data C2 = F {f1, f2 :: Int, f3 :: Bool}
+-- F {} will match everything
+#+END_SRC
+
+#+BEGIN_SRC haskell
+newtype Age = Age Int -- Age on RHS lives in function world
+
+newtype Age2 = Age2 {unAge2 :: Int} -- Also provides the deconstructor
+{- Age2 :: Int -> Age
+   unAge :: Age -> Int
+ -}
+#+END_SRC
+
+** Typeclasses
+   * Structured way to introduce /overloaded/ (/polymorphic/) functions, use ~class~
+   * To add a type to a typeclass, we use ~instance~
+   * There are quite a few predefined typeclasses, most defined in ~Prelude~
+#+BEGIN_SRC haskell
+class Example a where
+    f1 :: a -> a -> String
+    f2 :: a -> a
+    f3 :: a
+
+instance Example Int where
+    f1 x y = show $ (+) x y -- Transforms the result of addition into string
+    f2 = (+1) -- Successor function
+    f3 = 0 -- Constant
+#+END_SRC
+
+   * If something is in ~Graphical~
+#+BEGIN_SRC haskell
+class Graphical a where
+    shape :: a -> Graphics
+
+instance Graphical Box where
+    -- Box is a either a newtype or data type
+    shape = boxDraw -- Assumed to be previously defined
+
+instance Graphical a => Graphical [a] where
+    shape = (foldr1 overGraphic) . (map shape)
+    -- foldr1 (overGraphic (map shape))
+    {- If a is an instance of Graphical, then we can define a list of graphical
+       by folding the overGraphic function over the mapped shapes in the shape list
+     -}
+#+END_SRC
+
+*** Numbers in Haskell
+    * All numeric types are instances of Num class
+#+BEGIN_SRC haskell
+class (Eq a, Show a) => Numa where
+    (+), (-), (*) :: a -> a -> a
+    negate, abs, signum :: a -> a
+    fromInteger :: Integer -> a
+#+END_SRC
+
+*** Inherited Typeclasses
+    * If you want to have a new typeclass inherit some functionality from a previous one
+#+BEGIN_SRC haskell
+class Graphical a => Enclosing a where -- Defining a new typeclass extending a previous one
+    encloses :: Point -> a -> Bool
+#+END_SRC
+
+    * If you want to have restrictions from multiple typeclasses, you can inherit from multiple
+#+BEGIN_SRC haskell
+-- Multiple constraints
+:: (Eq a, Show a) => ...
+{- The type a must be in both the Eq and Show typeclasses
+ -}
+
+-- Multiple inheritance
+class (Eq a, Show a) => EqShow a
+{- The typeclass EqShow is based off the properties given by both Eq a and Show a
+ -}
+#+END_SRC
+
+#+BEGIN_SRC haskell
+data Eq a => Set a = NilSet | ConsSet a (Set a)
+{- Introduces 2 data constructors
+   1) NilSet
+   2) Insert element of type a into an existing set of type a
+   Inside the set, each element should be unique.
+
+   NilSet :: Set a
+   ConsSet ::
+ -}
+#+END_SRC
+
+*** Derived Instances
+    * Classes defined by standard libraries may also be derivable
+    * From ~Prelude~, only:
+      1) ~Eq~
+      2) ~Ord~
+      3) ~Enum~
+      4) ~Bounded~
+      5) ~Show~
+      6) ~Read~
+
+#+BEGIN_SRC haskell
+data Season = Spring | Summer | Autumn | Winter
+            deriving (Eq, Ord, Enum, Show, Read)
+            -- We can compare them, enumerate them, show them, read them
+            -- By deriving, the system defines many functions for us
+
+notWinter = [Spring..Autumn] -- Provided by the Enum typeclass
+#+END_SRC
+
+#+BEGIN_SRC haskell
+-- Maybe type
+data Maybe a = Nothing
+             | Just a deriving (Eq, Ord, Read, Show)
+
+maybe :: b -> (a -> b) -> Maybe a -> b
+-- n, the first argument, is the value if Maybe a is Nothing
+maybe n f Nothing = n
+maybe n f (Just x) = f x
+#+END_SRC
+
+** Default Typeclass Definitions
+#+BEGIN_SRC haskell
+class Eq a where
+    (==), (!=) :: a -> a -> Bool
+    x != y = not (x == y)
+    x == y = not (x != y)
+#+END_SRC
+
+** Java vs. Haskell
+   * Haskell types = Java classes
+   * Haskell class = Java interface
+     - Java: Class implements an interface
+     - Haskell: Type is an instance of a class
+     - Java: Object is instance of class
+     - Haskell Expression
+
+* Typeclass Examples
+#+BEGIN_SRC haskell
+class Functor f where
+    fmap :: (a -> b) -> f a -> f b
+    -- Given a function from a to b, return function applied to a returning a function on b
+
+instance Functor [] where
+    fmap = map
+
+{- Maybe and Tree are functors
+   Maybe a and Tree a are NOT functors
+ -}
+instance Functor Maybe where
+    fmap f (Just x) = Just (f x)
+    fmap f Nothing = Nothing
+
+-- Values only stored in leaves
+data Tree a = Leaf a
+            | Branch (Tree a) (Tree a)
+
+instance Functor Tree where
+    fmap f (Leaf x) = Leaf (f x)
+    fmap f (Branch t1 t2) = Branch (fmap f t1) (fmap f t2)
+
+{- These functor laws MUST be obeyed and explicitly written
+   fmap id = id
+   fmap (f.g) = (fmap f) . (fmap g)
+ -}
+#+END_SRC
+
+* Monad Typeclasses
+#+BEGIN_SRC haskell
+class Monad m where
+    (>>=) :: m a -> (a -> m b) -> m b
+    (>>) :: m a -> m b -> m b
+    return :: a -> m a
+    fail :: String -> m a
+
+    m >> k = m >>= \_ -> k
+    fail s = error s
+
+{- All instances of Monad should obey these laws
+   return a >>= k = k a
+   m >>= return = m
+   m >>= (\x -> k x >>= h) = (m >>= k) >>= h
+
+   Both Monad and Functor should satisfy
+   fmap f xs = xs >>= return . f
+ -}
+#+END_SRC
+
+* Extended Example: Define our Own numbers, MyNatural
+#+BEGIN_SRC haskell
+data MyNatural = Zero
+               | Succ MyNatural
+               deriving (Eq, Show)
+
+two = Succ $ Succ Zero
+three = Succ two
+
+natPlus Zero y = y
+natPlus (Succ x) y = Succ (natPlus x y)
+
+natMinus x Zero = x
+natMinus Zero y = error "Negative Natural"
+natMinus (Succ x) (Succ y) = natMinus x y
+
+natTimes Zero y = Zero
+natTimes (Succ x) y = natPlus y (natTimes x y)
+
+natSignum Zero = Zero
+natSignum (Succ x) = Succ Zero
+
+integerToNat 0 = Zero
+integerToNat (x+1) = Succ (integerToNat x) -- Incorrect Definition
+
+instance Num MyNatural where
+    (+) = natPlus
+    (-) = natMinus
+    (*) = natTimes
+    negate = error "Negative Natural"
+    abs x = x
+    signum = natSignum
+    fromInteger = integerToNat
+
+showNat n = show (intValue n) where
+    intValue Zero = 0
+    intValue (Succ x) = 1 + intValue x
+
+instance Show MyNatural where
+    show = showNat
+#+END_SRC

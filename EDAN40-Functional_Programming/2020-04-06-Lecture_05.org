@@ -2,4 +2,36 @@
 #+AUTHOR: Karl Hallsby
 #+DATE: April 06, 2020
 
-*
+* Folding
+#+BEGIN_SRC haskell
+foldl :: (a-> b -> a) -.> a -> [b] -> a
+foldl f z [] = z
+foldl f z (x:xs) = foldl f (f z x) xs
+
+{- f ( ... (f (f (f z x1) x2) x3) x4) ...) xn
+   Left associative
+   Tail associative - Iterate through list, produce value afterwards
+   Lazy - Nothing evaluated until result needed
+   Cannot apply to infinite list if you want finite number of elements
+    Because you cannot recurse to the end of the infinite list to fold smaller
+ -}
+
+foldr :: (a -> b -> b) -> b -> [a] -> b
+foldr f z [] = z
+foldr f z (x:xs) = f x (foldr f z xs)
+
+{- f x1 (f x2 (f x3 (f x4 (... (f xn z) ... ))))
+   Right associative
+   Recursive into argument - Each iteration applies f to the next value and value of folding is rest of list
+   Lazy - Nothing evlauated until result is needed
+   Can be applied to an infinite list if you want a finite number of elements
+ -}
+#+END_SRC
+
+* Assignment 1N: Chatterbots
+  * ~return~ makes the provided expression part of the IO monad
+  * ~return :: a -> m a~
+  * IO doesn't specify the type that strictly, which means we need to give the signature
+  * Or the system may be good enough to type inference it
+  * ~randomIO :: IO n~ where ~n~ is an almost arbitrary numeric type
+  * We want a non-deterministic expression value

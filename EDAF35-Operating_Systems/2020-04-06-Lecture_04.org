@@ -2,4 +2,30 @@
 #+AUTHOR: Karl Hallsby
 #+DATE: April 06, 2020
 
-*
+* User Thread Scheduling
+  * User thread scheduled onto kernel threads by library
+  * One-to-One, user thread needs help from kernel threads and system scheduler to be executed
+  * Many-to-One has to scheduler user-space threads into kernel threads
+    - No need to work with the Kernel
+  * Many-to-Many, schedule the user threads ont the virtual processor
+    - The Lightweight process is then scheduled onto kernel threads
+    - Each lightweight process is associated with 1 kernel threads
+    - OS decides if LWP executes a blocking action, potentially creating a new Kernel Thread and LWP
+    - Informs the User thread, and tells it to work with that -> Upcall
+
+* Monitor
+  * Conditional variable is a semaphore?
+    - Similar to Binary Semaphores
+      + The conditional is a binary condition
+
+* Binary Semaphore vs. Mutex Lock
+  * Some systems with mutexes, only allow you to ~signal()~ and ~wait()~ once you have acquired them
+    - Can't give the lock away to someone else that you hold
+    - You cannot ~release~ a mutex if you don't ~acquire~ it
+    - You *MUST* ~acquire()~ before you can use the mutex
+    - You can only ~release~ the mutex if you ~acquire~ it early.
+  * Binary semaphore, you don't need to own the semaphore
+    - Signal from one process/thread to another
+    - You can ~signal()~ without having performed a ~wait()~ to get the Semaphore
+
+* Use the strictest structure possible!

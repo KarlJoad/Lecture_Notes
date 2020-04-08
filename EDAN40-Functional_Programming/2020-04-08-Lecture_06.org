@@ -2,4 +2,293 @@
 #+AUTHOR: Karl Hallsby
 #+DATE: April 08, 2020
 
-*
+* Monad Typeclass
+  * We want to separate /pure/ and /impure/ code
+  * Properties of a particular kind of function
+  * Introduction of /state/ and transformations upon it
+  * These can be seen as just another typeclass
+
+* IO, Separate pure and impure code
+  * Typically seen as side-effect functions
+  * The below code makes no assurances that ~inputDiff~ will always be 0
+  * Dependent on what ~inputInt~ returns
+#+BEGIN_SRC haskell
+inputInt :: IO Int
+inputDiff = inputInt - inputInt
+#+END_SRC
+
+  * Sequencing forces evaluation of the arguments every time
+
+** Activities/Actions
+   * All of these have a type too
+   * The occurrence of ~()~ is either the empty tuple or the *Unit* type
+   * It is a general placeholder for things we do not care about
+#+BEGIN_SRC haskell
+prompt :: IO () -- Technically () -> IO ()
+prompt = putStr ">:"
+
+-- The type of the action is IO a
+-- Function of type IO a
+getChar :: IO Char -- Technically () -> IO Char
+getLine :: IO String -- Technically () -> IO String
+#+END_SRC
+
+** Sequencing/Do-Notation
+   * Sequence activites to execute in an order
+#+BEGIN_SRC haskell
+echoReverse :: IO ()
+echoReverse = do aLine <- getLine -- First we get the line with String, getLine :: IO String
+                          -- <- denotes the extraction of the value from the IO Monad typeclass
+                 putStrLn (reverse aLine)
+#+END_SRC
+
+** Return
+   * ~return~ does empty actions
+#+BEGIN_SRC haskell
+getInt :: IO Int
+getInt = do aLine <- getLine
+                     return (read aLine :: Int) -- read :: String -> Int
+-- The return wraps the output from read back into the IO monad
+#+END_SRC
+
+** Let
+  * We can define scope-local variables inside of do-notation blocks
+#+BEGIN_SRC haskell
+echoReverse2 :: IO ()
+echoReverse2 = do aLine <- getLine
+                           let theLineReversed = reverse aLine
+                           -- theLineReversed is only available after this line
+                           put StrLn (theLineReversed)
+#+END_SRC
+
+** Imperative Style
+   * We can
+#+BEGIN_SRC haskell
+testPalindrome :: IO ()
+testPalindrome = do prompt -- Prompt user for string
+                    aline <- getLine
+                    if (aLine == (reverse aLine)) then
+                        putStrLn "Yes, a palindrome."
+                    else
+                        putStrLn "No, not a palindrome."
+#+END_SRC
+
+** Loops with recursion
+#+BEGIN_SRC haskell
+testPalindromes :: IO ()
+testPalindromes = do prompt
+                     aLine <- getLine
+                     if (aLine == "") then
+                         return ()
+                     else do
+                       if (aLine == (reverse aLine)) then
+                           putStrLn "Yes"
+                       else
+                           putStrLn "no"
+
+#+END_SRC
+
+** Lambda laughter
+#+BEGIN_SRC haskell
+laugh :: IO ()
+laugh =
+    let x = do putChar 'h'; putChar 'a'
+    in do x; x
+#+END_SRC
+
+** Example
+#+BEGIN_SRC haskell
+something = do a <- readLn
+               b <- readLn
+               return (a, b) -- This will say :: IO (String, String)
+               c <- readLn
+               putStrLn c -- This will say :: IO ()
+-- There will be complaints about this function
+
+somethingFixed = (Read a, Read b) -> IO (a, b)
+somethingFixed = do a <- readLn
+                    b <- readLn
+                    return (a, b)
+#+END_SRC
+
+#+BEGIN_SRC haskell
+f :: IO ()
+f = do a <- readLn
+       return a
+       putStrLn a
+
+{- return takes something and puts it in the monadic world
+   return :: Monad m => a -> m a
+   The return has no real effect here.
+ -}
+#+END_SRC
+
+* Properties of a Particular Kind of Functions
+** Composing Functions
+#+BEGIN_SRC haskell
+f :: a -> b
+g :: b -> c
+
+-- g.f == g (f x)
+
+-- Suppose
+f :: a -> Maybe b
+g :: b -> Maybe c
+-- How do we compose these? What does this composition mean?
+
+children :: Person -> [Person]
+grandchildren :: Person -> [Person]
+
+-- You would think grandchildren = children.children, but that's not quite right
+#+END_SRC
+
+To achieve this, we need a Functor
+** Functor
+#+BEGIN_SRC haskell
+class Functor f where
+    fmap :: (a -> b) -> f a -> f b
+-- Note that a and b are not limited to jsut concrete types, but
+-- are also allowed to be monads.
+
+-- Note that
+instance Functor IO where
+    fmap f action = do result <- action
+                       return (f result)
+#+END_SRC
+
+Some more examples
+#+BEGIN_SRC haskell
+import Data.Char
+import Data.List
+fmaptest = do line <- fmap (intersperse '-' . reverse . map toUpper) getLine
+              {- Get a line, uppercase all letters, reverse the resulting String
+                 and replace all spaces with hyphens.
+                 fmaps allows us to peel the String value from getLine from IO String
+                 and perform this large function like that.
+               -}
+              putStrLn line
+
+a :: [Integer -> Integer] -- List of functions
+a = fmap (*) [1,2,3,4]
+fmap (\f -> f 9) a -- => [9, 18, 27, 36]
+#+END_SRC
+
+** Applicative Functors
+#+BEGIN_SRC haskell
+class (Functor f) => Applicative f where
+    pure :: a -> f a
+    (<*>) :: f (a -> b) -> f a -> f b
+    (<$>) :: (Functor f) => (a -> b) -> f a -> f b
+
+instance Applicative Maybe where
+    pure = Just
+    Nothing <*> _ = Nothing
+    (Just f) <*> something = fmap f something
+    fn <$> x = fmap fn x
+
+Just (+3) <*> Just 9 -- => Just 12
+pure (+3) <*> Just 10 -- => Just 13
+Just (++"haha") <*> Nothing -- => Nothing
+Nothing <*> Just "woot" -- => Nothing
+pure (+) <*> Just 3 <*> Just 5 -- => Just 8
+
+
+[(+), (*)] <*> [1,2] <*> [3,4] -- => [4,5,5,6,3,4,6,8]
+
+instance Applicative [] where
+    pure x = [x]
+    fs <*> xs = [f x | f <- fs, x <- xs]
+
+instance Applicative IO where
+    pure = return
+    a <*> b = do f <- a
+                 x <- b
+                 return (f x)
+#+END_SRC
+
+* The Monad typeclass
+#+BEGIN_SRC haskell
+class Monad m where
+    (>>=) :: m a -> (a -> m b) -> m b -- "bind"
+    -- Requires extraction of value of a from (m a) then outputs (m b)
+    (>>) :: m a -> m b -> m b -- "then"
+    -- No possibility of using (m a) in later operations
+    return :: a -> m a
+    fail :: String -> m a
+#+END_SRC
+
+** ~return~ is a bad name
+#+BEGIN_SRC haskell
+main = do s <- getLine
+               return () -- Doesn't stop the sequence of execution
+               -- Just lifts the argument to the Monad's level
+               putStrLn s
+#+END_SRC
+
+** MonadPlus class
+#+BEGIN_SRC haskell
+class (Monad m) => MonadPlus m where
+    mzero :: m a
+    mplus :: m a -> m a -> m a
+-- Algebraically this is called a monoid
+#+END_SRC
+
+** Identity Monad
+#+BEGIN_SRC haskell
+data Id a = Id a
+-- Acts like the id function, but as a typeclass instead
+instance Monad Id where
+    return x = Id x
+    (Id x) >>= f = f x -- Function applied to underlying type, and returned in the monadic type
+#+END_SRC
+
+** List Monad
+#+BEGIN_SRC haskell
+instance Monad [] where
+    return x = [x]
+    xs >>= f = concat (map f xs) -- Concatenation of list of lists from mapping function to xs
+    fail x = []
+
+instance MonadPlus [] where
+    mzero = []
+    mplus = (++)
+#+END_SRC
+
+** Maybe Monad
+#+BEGIN_SRC haskell
+instance Monad Maybe where
+    return x = Just x
+    Just x >>= f = f x
+    Nothing >>= f = Nothing -- If we try to apply a function to nothing, return Nothing
+
+instance MonadPlus Maybe where
+    mzero = Nothing
+    Nothing `mplus` ys = ys
+    xs `mplus` ys = xs
+    -- If ys are Nothing, Nothing is returned
+
+singleWildcardMatch (wc:ps) (x:xs) = match wc ps xs >> Just [x]
+#+END_SRC
+
+** Do-notation
+#+BEGIN_SRC haskell
+echoRev = do aLine <- getLine
+             putStrLine (reverse aLine)
+
+echoRev = getLine >>= \aLine -> putStrLine (reverse aLine)
+
+list1 = [(x, y) | x <- [1..], y <- [1..x]]
+
+list2 = do x <- [1..]
+           y <- [1..x]
+           return (x, y)
+#+END_SRC
+
+* Moving from Monad-World to Pure-World
+   * IO Stripping is not allowed (officially) because you can strip side effects
+     - The stripping done inside of a ~do~ block is local to that block, not global
+   * This is done with the ~System.IO.Unsafe~ module
+   * It is *NOT* type-safe
+#+BEGIN_SRC haskell
+unsafePerformIO :: IO a -> a
+#+END_SRC

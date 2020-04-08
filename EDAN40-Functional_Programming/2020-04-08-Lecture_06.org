@@ -1,0 +1,5 @@
+#+TITLE: Lecture 6
+#+AUTHOR: Karl Hallsby
+#+DATE: April 08, 2020
+
+*

@@ -1,0 +1,23 @@
+#+TITLE: Lecture 5
+#+AUTHOR: Karl Hallsby
+#+DATE: April 26, 2020
+
+* Questions
+  * Really need to register for a lab section, since all remote?
+    - Not really needed.
+    - They will handle it.
+  * Difference between Logical and Virtual Memory?
+    - Logical is a bit more general
+    - Don't need virtual memory to talk about logical
+    - Logical is what CPU gives to MMU
+    - Physical is what MMU gives to memory
+    - Virtual is what the Process sees within itself
+  * How does ~vfork()~ allow for an immediate ~exec()~ in the child without the parent changing?
+    - ~vfork()~ does not use copy-on-write
+    - If child process changes any pages of the parent’s address space, altered pages visible to the parent once it resumes.
+    - Child is its own process too, so the parent is not replaced
+    - ~exec()~ creates a new address space for the child, so the parent is unaffected
+  * Modify Bit on page or frame
+    - Page = Virtual/Logical Memory
+    - Frame = Physical Memory
+    - On Frame, but it tells whether the page that the frame is hosting has been modified.

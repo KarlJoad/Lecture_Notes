@@ -1,0 +1,302 @@
+#+TITLE: Lecture 7 - Lazy Evaluation
+#+AUTHOR: Karl Hallsby
+#+DATE: April 27, 2020
+
+* Expression
+  * An expression is something that has a value
+
+* Laziness
+  * This only works if expression evaluation is pure
+    - Meaning that the order of evaluation does not matter
+    - Caveat, so long as the evaluation can terminate
+  * Lazy evaluation only works if both of the below exist.
+    1) [[*Call-by-Name][Call-by-Name]] <- Top-Down
+    2) [[*Sharing][Sharing]]
+  * Property of an *implementation*
+  * Evaluate an expression only when its value is needed.
+  * Laziness is a common implementation technique for non-strict langauges
+  * Laziness is not good for parallelization
+  * Haskell is not *completely* lazy
+    - Pattern Matching
+
+** Lenient (Optimistic)
+   * You need to enforce *SOME* amount of strictness to the evaluation order
+   * Laziness alternative
+   * Somewhere between lazy and strict
+   * Better for parallelization
+
+** Consequences/Implications
+   * Purity
+     - There are impure lazy langauges, R, for instance.
+   * Space Leaks
+#+BEGIN_SRC haskell
+foldl (+) 0 (1:2:3:[])
+{- == foldl (+) (0 + 1) (2:3:[])
+   == foldl (+) ((0 + 1) + 2) (3:[])
+   == foldl (+) (((0 + 1) + 2) + 3) ([])
+   == (((0 + 1) + 2) + 3)
+
+   Thunks (addition operations) will be stored until needed, at the very end.
+   Very bad in the case of infinite data structures
+ -}
+
+foldl' f a [] = a
+foldl' f a (x:xs) = ((foldl' f) $! (f a x)) xs
+{- In this version, we enforce that the addition of each value happens before
+   recursing to the next element.
+ -}
+#+END_SRC
+   * Allow Operators to Short-Circuit by Default
+#+BEGIN_SRC haskell
+(&&) :: Bool -> Bool -> Bool
+True && x = x
+False && _ = False
+{- If BOTH arguments are complicated, and the first argument is False then,
+   we never need to evaluate the other complicated argument.
+   We can just return False immediately.
+ -}
+#+END_SRC
+   * Can support Infinite Data Structures
+   * Efficient Pipelining
+   * Dynamic Programming "for free"
+     - Assignment N2
+
+* Reducible Expression
+  * Short-hand -> /redex/
+  * Function application to an argument
+#+BEGIN_SRC haskell
+mult :: (Int, Int) -> Int
+mult (x, y) = x * y
+
+mult (1+2, 2+3)
+{- 3 redexes
+   1) 1+2
+   2) 2+3
+   3) mult (1+2, 2+3)
+
+   Now we have different ways to evaluate these redexes
+ -}
+#+END_SRC
+
+** Evaluation Strategies
+*** Call-by-Value
+Innermost (Left-to-Right) -> Call-by-Value
+\begin{align*}
+&mult (1+2, 2+3) \\
+&mult (3, 2+3) \\
+&mult (3, 5) \\
+&3 * 5 \\
+&15
+\end{align*}
+
+*** Call-by-Name
+Outermost (Left-to-Right) -> Call-by-Name
+\begin{align*}
+&mult (1+2, 2+3) \\
+&(1+2) * (2+3) \\
+&3 * (2+3) \\
+&3 * 5 \\
+&15
+\end{align*}
+
+If the expressions are *PURE*, then the order of evaluation does not matter.
+
+** Lambda Expressions
+*DO NOT REDUCE INSIDE LAMBDAS!!*
+This is the reason why we can treat functions as first-class entities in Haskell.
+
+#+BEGIN_SRC haskell
+mult :: Int -> Int -> Int
+mult x = \y -> x * y
+{- mult (1+2) (2+3)
+   mult 3 (2+3)
+   (\y -> 3 * y) (2+3)
+   (\y -> 3 * y) 5
+   3 * 5
+   15
+ -}
+#+END_SRC
+
+Treat functions/lambda expressions as black boxes.
+#+BEGIN_SRC haskell
+\x -> 1+2
+-- We cannot reduce the 1+2 until we apply the function
+#+END_SRC
+
+** Termination
+#+BEGIN_SRC haskell
+infty :: Int
+infty = 1 + infty
+-- Regardless of the evaluation order, this does not terminate
+#+END_SRC
+
+But,
+#+BEGIN_SRC haskell
+fst :: (a, b) -> a
+fst (x, y) = x
+
+infty :: Int
+infty = 1 + infty
+
+fst (0, infty)
+{- CALL-BY-VALUE
+   fst (0, infty) [Apply infty]
+   fst (0, 1+infty) [Apply infty]
+   fst (0, 1+(1+infty))
+   fst (0, 1+(1+(1+infty)))
+   .
+   .
+   .
+
+   CALL-BY-NAME
+   fst(0, infty) [Apply fst]
+   0
+ -}
+#+END_SRC
+
+Call-by-name may terminate when call-by-value does not.
+
+** Number of Reductions
+#+BEGIN_SRC haskell
+square :: Int -> Int
+square n = n * n
+#+END_SRC
+
+*** Call-by-Value
+\begin{align*}
+&square (1+2)
+&square 3
+&3 * 3
+&9
+\end{align*}
+
+*** Call-by-Name
+\begin{align*}
+&square (1+2)
+&(1+2) * (1+2)
+&3 * (1+2)
+&3 * 3
+&9
+\end{align*}
+
+This uses an extra reduction step!!
+*Call-by-Name may evaluate an argument more than once!*
+
+** Sharing
+   * Sharing allows us to use pointers to common redexes
+   * Evaluate the pointer's value, then refer to the evaluated result of the expression
+   * This means we only evaluate the pointer once, then use its new value everywhere else
+
+** Infinite Structures
+#+BEGIN_SRC haskell
+ones :: [Int]
+ones = 1 : ones
+
+head :: [a]
+head (x : _) = x
+
+head ones
+{- CALL-BY-NAME WILL TERMINATE
+   head ones
+   head (1 : ones)
+   1
+
+   CALL-BY-VALUE DOES NOT TERMINATE
+   head ones
+   head (1 : ones)
+   head (1 : (1 : ones))
+   head (1 : (1 : (1 : ones)))
+   ...
+ -}
+#+END_SRC
+
+* Modular Programming
+  * Separation of /control/ and /data/
+#+BEGIN_SRC haskell
+filter (<=6) [1..]
+{- Does NOT terminate
+   because it runs through the whole list, which is infinite in this case
+ -}
+
+takewhile (<=6) [1..]
+{- DOES terminate
+   because it stops once it reaches its first false predicate evaluation
+ -}
+#+END_SRC
+
+#+BEGIN_SRC haskell
+module ErastothenesPrimes
+
+primes :: [Integer]
+primes = sieve [2..]
+{- This never terminates, because it creates an infinite list of prime numbers
+ -}
+
+sieve :: [Integer] -> [Integer]
+sieve (p:xs) = p : sieve [x | x <- xs, x `mod` p /= 0]
+{- sieve (p:xs) starts with:
+    Initial p value of 2
+    Initial xs value of [3, 4, 5, 6..]
+ -}
+#+END_SRC
+
+* Strict Application
+  * ~$!~
+  * Forces the evaluation of the top-level of ~x~ in ~f $!x~
+  * We evaluate the argument to Weak Head Normal Form
+#+BEGIN_SRC haskell
+square $! (1+2)
+{- square $! 3
+   square 3
+   3 * 3
+   9
+ -}
+#+END_SRC
+
+  * Strictness is a property of the language's semantics itself
+  * Property of the /semantics/ of the language
+  * Related to reductions of expressions
+    - Top-Down, Call-by-Name
+    - Bottom-Up, Call-by-Value
+  * Strict langauges always need to find the bottom value
+    - This may lead to an error, an endless loop, or an endless recursion
+  * Non-strict langauges do not *need* to find the bottom value to compute
+    - Though, this property can be enforced as needed
+
+** Strict Curried Function
+   * Sometimes this saves space during execution
+
+#+BEGIN_SRC haskell
+(f $! x) y -- Force evaluation of x
+(f x) $! y -- Force evaluation of y
+(f $! x) $! y -- Force evaluation of x, then force the evaluation of y
+#+END_SRC
+
+* Normal Forms
+These do overlap, as Normal Form is a subset of Weak Head Normal Form
+  1) Weak Head Normal Form
+     * Evaluated up to the level until you only have arguments to funtions left
+     * This is each level of evaluation
+  2) Head Normal Form
+     * Evaluate the expression until you have to/can apply a lambda/function *ONCE*
+  3) Normal Form
+     * Every expression is evaluated/reduced
+     * Completed execution
+
+Slides 21-23 are good for illustrating this.
+
+#+BEGIN_SRC haskell
+replicate = \n x -> case n of
+                      0 -> []
+                      n -> x : replicate (n-1) x
+
+replicate 3
+{-
+  Weak Head Normal Form
+   \ x -> case 3 of 0 -> []; n -> x : replicate (n-1) x
+  Head Normal Form
+   \ x -> x : replicate (3-1) x
+  Normal Form
+   \ x -> x : x : x : []
+ -}
+#+END_SRC

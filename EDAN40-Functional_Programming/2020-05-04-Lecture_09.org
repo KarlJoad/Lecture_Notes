@@ -1,0 +1,5 @@
+#+TITLE: Lecture 9
+#+AUTHOR: Karl Hallsby
+#+DATE: May 04, 2020
+
+*

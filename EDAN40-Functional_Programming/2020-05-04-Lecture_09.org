@@ -2,4 +2,340 @@
 #+AUTHOR: Karl Hallsby
 #+DATE: May 04, 2020
 
-*
+* Concurrency
+** Profiling
+   * Compile program with ~-prof~ and ~-fprof-auto~ options
+   * Run with ~+RTS~ option ~-p~
+   * These will allow us to see which functions take longest
+
+#+BEGIN_SRC haskell
+main = print (fib 30)
+fib n = if n < 2 then
+            1
+        else
+            fib (n-1) + fib (n-2)
+#+END_SRC
+#+BEGIN_SRC shell
+ghc -prof -fprof-auto -rtsopts FibProfile
+./FibProfile +RTS -p # Run on just a single processor
+./FibProfile +RTS -N4 -p # Runs on 4 processors
+#+END_SRC
+#+BEGIN_SRC haskell
+{- This is NOT by defualt devaluated with 1 processor.
+   Check the provile output to find out how long it took
+ -}
+main = print (f 30 + g 30)
+    where
+      f n = fib n
+      g n = fib (n `div` 2)
+
+fib n = if n < 2 then
+            1
+        else
+            fib (n-1) + fib (n-2)
+#+END_SRC
+
+*** CAF
+    * Constant Applicative Form = Top-Level Thunk
+    * Highest-most expression that is waiting for evaluation
+
+*** ThreadScope
+    * Cross-Platform
+    * Visualizes the execution of each core for a Haskell program
+
+*** Threading
+#+BEGIN_SRC shell
+ghc -rtsopts -threaded -eventlog ./FibProfile
+threadscore ./FibProfile.eventlog
+#+END_SRC
+
+** Threading
+   * Haskell's lightweight (library) threads through ~forkIO~
+     - OS threads created through ~forkOS~
+   * When compiling ~-threaded~ needed.
+   * When executing this, need ~+RTS -Nx -RTS~
+   * The compiler will guess the number of cores to use otherwise.
+   * *When ~main~ thread finishes, all others are killed without warning.*
+   * ~:m~ inside GHCI loads library module(s) for use in REPL.
+   * In ~Control.Concurrent~ module.
+#+BEGIN_SRC haskell
+-- forkIO :: IO () -> IO ThreadID
+:m Control.Concurrent System.Directory
+forkIO (writeFile "foobar" "this is sth") >> doesFileExist "foobar"
+
+import qualified Data.ByteString.Lazy as L
+    do
+      content <- L.readFile name -- This is a non-blocking read
+      forkIO (compressFile name content)
+      return ()
+#+END_SRC
+
+*** Synchronization
+    * If we want to have synchronizing variables to communicate between threads
+#+BEGIN_SRC haskell
+import Control.Concurrent
+
+communicate = do
+  m <- newEmptyMVar -- Box we can store whatever we want in. Shared among threads
+  forkIO $ do
+    v <- take MVar m -- This thread will wait until the putMVar happens
+    putStrLn ("received " ++ show v)
+  putStrLn "sending"
+  putMVar m "Wake up!"
+#+END_SRC
+
+* Parallelism
+** Normal Forms
+  * NF (RNF) - Normal Form (Reduced Normal Form)
+    - Completely evaluated
+  * HNF - Head Normal Form
+  * WHNF - Weak Head Normal Form
+    - Evaluated only up to the outemost constructor
+    - http://stackoverflow.com/questions/6872898/haskell-what-is-weak-head-normal-form
+
+** Space Leaks
+   * /Strict/ vs. /Lazy/ Evaluation
+   * A gathering of unevaluated thunks.
+#+BEGIN_SRC haskell
+foldl (+) 0 (1:2:3:[])
+{-
+== foldl (+) (0 + 1) (2:3:[])
+== foldl (+) ((0 + 1) + 2) (3:[])
+== foldl (+) (((0 + 1) + 2) + 3) []
+== (((0 + 1) + 2) + 3)
+
+The thunks are stored until they are needed.
+We would prefer the strict evaluation of the addition before recursion.
+This prevents the accumulation of the (+) thunks.
+ -}
+#+END_SRC
+
+#+BEGIN_SRC haskell
+foldl' _ zero [] = zero
+foldl' step zero (x:xs) =
+    let
+        new = step zero x
+    in
+      new `seq` foldl' step new xs
+      -- The new is evaluated first, then the foldl' is returned
+      -- That expression may be evaluated later.
+
+{- seq :: a -> b -> b
+   Forces evaluation of first argument, returning the second one
+   This evaluation only operates on the first thunk up to WHNF
+ -}
+#+END_SRC
+
+*** Usages of ~seq~
+#+BEGIN_SRC haskell
+hiddenInside x y = someFunc (x `seq` y) -- The x cannot be considered evaluated
+-- The `seq` is hidden inside the thunk between the parentheses
+
+hiddenByLet x y z =
+    let
+        a = x `seq` someFunc y
+    in
+      anotherFunc a z
+-- This is the same problem. the `seq` is hidden inside the let
+-- It will only be evaluated when the a is required to be evaluated
+
+badExpression step zero (x:xs) = seq (step zero x)
+                                     (badExpression step (step zero x) xs)
+-- The (step zero x) may not yield the the save value
+-- The outer version will be evaluated and the one inside the badExpression will not
+
+-- These are reasonable uses and cases of seq
+onTheOutsize x y = x `seq` someFunc y
+chained x y z = x `seq` y `seq` someFunc z
+strictPair (a, b) = a `seq` b `seq` (a, b)
+#+END_SRC
+
+** Sorting
+#+BEGIN_SRC haskell
+quickSort :: (Ord a) => [a] -> [a]
+quickSort _ = []
+quickSort (x:xs) = lesser ++ x:greater
+    where
+      lesser  = sort [y | y <- xs, y <  x]
+      greater = sort [y | y <- xs, y >= x]
+
+{- If the list is large, we may want to evaluate lesser and greater in parallel
+   and before we attempt to put them back together.
+ -}
+
+import Control.Parallel
+parQuickSort :: (Ord a) => [a] -> [a]
+parQuickSort _ = []
+parQuickSort (x:xs) = force greater `par` (force lesser `pseq` (lesser ++ x:greater))
+    where
+      lesser  = parQuickSort [y | y <- xs, y <  x]
+      greater = parQuickSort [y | y <- xs, y >= x]
+{- pseq, par, and force are from Control.Parallel
+   par evaluates first argument to WHNF IN PARALLEL and return second arg
+    ,* Announces that computation should be done in parallel
+    ,* Does not create a THREAD, but a SPARK, a potential for a thread.
+    ,* Spark becomes a thread ONLY if needed.
+    ,* Encourages the system for parallel computation
+    ,* This is the concept of a lazy future.
+    ,* Can be used quite freely, as compiler has freedom to not obey it.
+
+   pseq evaluate first arg BEFORE returning the second one
+    seq: Possibility of evaluating left arg first (unless compiler says otherwise)
+    pseq: GUARANTEES left arg evaluated first
+
+   force entire spine of list to be evaluated before returning constructor
+    ,* Evaluate greater down its spine and back up before returning the function
+    ,* In this case, we evaluate all the way down to base case before returning
+    ,* Essentially reates a return-by-value
+ -}
+
+sillySort _ = []
+sillySort (x:xs) = greater `par` (lesser `pseq` (lesser ++ x:greater))
+    where
+      lesser = sillySort [y | y<- xs, y< x]
+      greater = sillySort [y | y <- xs, y>=x]
+{- This will only parallelize the first recursion, which will then return a
+   constructor that itself will have to be evaluated.
+   This invalidates the reason we used parallelization.
+ -}
+
+force :: [a] -> ()
+force xs = go xs `pseq` ()
+    where
+      go (_:xs) = go xs
+      go [] = 1
+
+modForce :: [a] -> ()
+modForce xs = go xs `pseq` ()
+    where
+      go (x:xs) = x `pseq` go xs
+      go [] = 1
+
+parQuickSort2 :: (Ord a) => Int -> [a] -> [a]
+parQuickSort2 _ _ = []
+parQuickSort2 d list@(x:xs) | d <= 0 = sort list
+                            | otherwise = force greater `par` (force lesser `pseq` (lesser ++ x:greater))
+                            where lesser = parSort2 d' [y | y<- xs, y<x]
+                                  greater = parSort2 d' [y | y<- xs, y>= x]
+                                  d' = d-1
+#+END_SRC
+
+*** Sparks
+#+BEGIN_SRC haskell
+mkList :: Int -> [Int]
+mkList n = [1..n-1]
+
+relPrime :: Int -> Int -> Bool
+relPrime x y = gcd x y == 1
+
+euler :: Int -> Int
+euler n = length (filter (relPrime n) (mkList n))
+
+sumEuler :: Int -> Int
+sumEuler
+
+fib :: Int -> Int
+fib 0 = 0
+fib 1 = 1
+fib n = fib (n-1) + fib (n-2)
+
+-- Test with sumFibEuler 38 5300
+
+sumFibEuler :: Int -> Int -> Int
+sumFibEuler a b = fib a + sumEuler b -- This can have a memory "leak" because of how large the thunk gets
+
+parallelSumFibEuler :: Int -> Int -> Int
+parallelSumFibEuler a b = f `par` (f + e)
+    where
+      f = fib a
+      e = sumEuler b
+-- This creates a spark, but no thread.
+parallelSumEulerFib :: Int -> Int -> Int
+parallelSumEulerFib a b = e `par` (e + f)
+    where
+      f = fib a
+      e = sumEuler b
+{- This is better, but it is still pure luck if a thread is made.
+   The compiler can change a+b into b+a at will (because no side effects).
+ -}
+
+pseqSumFibEuler :: Int -> Int -> Int
+pseqSumFibEuler a b = f `par` (e `pseq` (e + f))
+    {- Make sure e is evaluated before attempting e+f
+       par ensures that the calculation of f and e are parallelized.
+     -}
+    where
+      f = fib a
+      e = sumEuler b
+#+END_SRC
+
+* Example Usage of Parallelism
+  * Google's MapReduce concept
+    - Perform a certain action on every action in data set
+    - Reduce the parallel computations by aggregating results
+  * Massive parallelism in the Cloud
+  * For example, processing Apache log files
+
+** Some Issues
+   * Algorithm becomes obscured by details of partitioning and communication
+   * Choosing "grain size"
+     - Smallest unit of work given to core can be difficult
+     - To large = not efficient
+     - To small = lots of overhead to keep track of grains
+#+BEGIN_SRC haskell
+import Control.Parallel
+parallelMap :: (a -> b) -> [a] -> [b]
+parallelMap _ _ = []
+parallelMap f (x:xs) = let r = f x
+                       in
+                         r `par` r : parallelmap f xs
+{- The issue here is that evaluation stops at the type constructor level.
+   If an element of the type a is a list itself?
+ -}
+forceList :: [a] -> ()
+forceList _ = ()
+forceList (x:xs) = x `pseq` forceList xs
+
+stricterMap :: (a-> b) -> [a] -> [b]
+stricterMap f xs = forceList xs `seq` map f xs
+#+END_SRC
+
+* Strategies
+#+BEGIN_SRC haskell
+data Eval a = Seq a | Par a | Lazy a
+type Strategy a =a -> Eval a
+{- An evaluations trategy performs no computations.
+   It only ensures that an expression is evaluated to some extent.
+   Simplest case is r0 and does nothing at all.
+   rwhnf evalautes up to just WHNF
+ -}
+
+-- Evaluate/Reduce 0 times
+r0 :: Strategy a
+r0 _ = ()
+
+-- Evaluate/Reduce up to WHNF
+rwhnf :: Strategy a
+rwhnf x = x `seq` ()
+
+{- If we want to evaluate an arbitrary type a further.
+   Note that this is the default definition of Normal Forms
+ -}
+class NFData a where
+    rnf :: Strategy a
+    rnf = rwhnf
+
+instance NFData a => NFData (Maybe a) where
+    rnf Nothing = ()
+    rnf (Just x) = rnf x
+
+parList :: Strategy a -> Strategy [a]
+parList strat [] = ()
+parList strat (x:xs) = strat x `par` (parList strat xs)
+
+parMap :: Strategy b -> (a -> b) -> [a] -> [b]
+parMap strat f xs = map f xs `using` parList strat
+    where
+      using :: a -> Strategy a -> a
+      using x s = s x `pseq` x
+#+END_SRC

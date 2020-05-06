@@ -1,0 +1,230 @@
+#+TITLE: Lecture 10
+#+AUTHOR: Karl Hallsby
+#+DATE: May 06, 2020
+
+* Monadic Parsing
+  * Parsing is ths process of taking a string of characters and making a tree
+  * This tree makes the string's /syntactic structure/ explicit
+  * For example, 2*3+4 usually means (2*3)+4 to us, because we have rules for precedence
+  * These precedence rules make the meaning of the string unambiguous.
+  * Without those precedence rules, this string is ambiguous.
+
+** What is Parsing?
+   * Analysis of text to:
+     1) Decide whether it is correct (Parsing)
+	- Formal Languages
+	- Automata
+	- Grammars
+     2) Decide its internal structure (Parsing)
+   * Semantic analysis
+     1) Decide its meaning (In N3, this is interpretation)
+     2) Manipulate it (In N3, this is interpretation)
+
+*** The Language to Parse
+#+BEGIN_SRC pascal
+read k;
+read n;
+m := 1;
+while n-m do
+begin
+   if m-m/k*k then
+      skip;
+      else
+   write m;
+   m := m + 1
+end
+#+END_SRC
+
+The grammar
+
+program ::= statements
+statements ::= {statement} <- Sequence of statements (0 or more statements)
+statement ::= variable ':=' expr ';'
+| 'skip' ';'
+| 'begin' statements 'end'
+| 'if' expr 'then' statement 'else' statement
+| 'while' expr 'do' statement
+| 'read' variable ';'
+| 'write' expr ';'
+expr ::= term expr'
+expr' ::= addOp term expr' | empty
+addOp ::= '+' | '-'
+
+term ::= factor term
+term' ::= mulOp factor term' | empty
+mulOp ::= '*' | '/'
+
+factor ::= num | var | '(' expr ')'
+variable ::= letter {letter} <- MUST be at least 1 letter, then sequence of letters
+
+** The Parser Type
+#+BEGIN_SRC haskell
+type Parser = String -> Tree -- Assume Tree is reasonably defined
+
+{- Because a Parser may not consume the entire String, we should return what we
+   did not consume
+ -}
+type Parser = String -> (Tree, String)
+
+-- Denote a failure with empty list, success as singleton list
+type Parser = String -> [(Tree, String)]
+
+-- Allow any type to be parsed
+type Parser a = String -> [(a, String)]
+-- A Parser of type a will return a list containing a
+
+{- Basic functions
+ -}
+return :: a -> Parser a
+return v = \input -> [(v, input)] -- Always success with return value v
+
+failure :: Parser a
+failure = \input -> [] -- Always fails
+
+singleChar :: Parser Char -- Get a single Char out of the given string
+singleChar = \input -> case input of
+                         [] -> []
+                         (x:xs) -> [(x, xs)]
+
+-- Applying a given Parser (function) to a given string
+parse :: Parser a -> String -> [(a, String)]
+parse p input = p input -- Just run the input against the given Parser, p.
+
+-- The sequencing (bind) operator
+(>>=) :: Parser a -> (a -> Parser b) -> Parser b
+parser1 >>= f = \input -> case parse parser1 input of
+                            [] -> [] -- If parser1 returns a failure, then just fail.
+                            [(v, out)] -> parse (f v) out -- Apply the Parser (f v) to the out "remainder"
+{- If parser1 returns a value we are interested in (v), then apply f to it.
+   f is another function which takes in v and when applied, returns another Parser that
+    can be applied.
+
+   Propagates failures forward
+   Gives the sequence with all the intermediate results throughout the computation
+
+ -}
+
+parseFirstThird :: Parser (Char, Char)
+parseFirstThird = do x <- singleChar
+                     singleChar
+                     y <- singleChar
+                     return (x, y) -- The return here is the return :: a -> Parser a
+{- return
+ -}
+
+-- Combinator: Choose one of the methods of evaluation, based on result of first
+(+++) :: Parser a -> Parser a -> Parser a
+parser1 +++ parser2 = \input -> case parse parser1 input of
+                                  [] -> parse parser 2 input
+                                  [()] -> []
+
+satisfy :: (Char -> Bool) -> Parser Char
+satisfy p = do x <- item
+           if p x then -- p is a predicate function
+               return x
+           else
+               failure
+
+digit :: Parser Char
+digit = sat isDigit
+
+lower :: Parser Char
+lower = sat isLower
+
+upper :: Parser Char
+upper = sat isUpper
+
+charMatch :: Char -> Parser Char
+charMatch x = sat (==x)
+
+parseString :: String -> Parser String
+parseString [] = return []
+parseString (x:xs) do char x
+                      parseString xs
+                      return (x:xs)
+
+many :: Parser a -> Parser [a]
+many p = many1 p +++ failure many1 returns a failure, just return the failure
+
+many1 :: Parser a -> Parser [a]
+many1 p = do v <- p
+             vs <- many p
+             return (v:vs)
+
+
+nat :: Parser Int
+nat = do xs <- many1 digit
+         return (read xs)
+
+integer = do char '-'
+             n <- nat
+             return (-n)
+          +++ nat
+
+whiteSpace :: Parser () -- This does not return anything of particular interes
+whiteSpace = do many (sat isSpace)
+                return ()
+
+token :: Parser a -> Parser a
+token p = do space v <- p
+             whiteSpace
+             return v
+
+ident :: Parser String
+ident = do x <- lower
+           xs <- many alphaNum
+           return (x:xs)
+
+identifier :: Parser String
+identifier = token ident
+
+integer :: Parser Int
+integer = token int
+
+-- Look for some symbol inside the String
+symbol :: String -> Parser String
+symbol xs = token (string xs)
+
+expr :: Parser Int
+expr = do t <- term
+          do symbol "+"
+             e <- expr
+             return (t+e)
+       +++ return t
+
+factor :: Parser Int
+factor = do symbol "("
+            e <- expr
+            symbol ")"
+            return e
+         +++ natural
+
+eval :: String -> Int
+eval xs = case (parse expr xs) of
+            [(n, [])] -> n
+            [(_, out)] -> error ("Unused input " ++ out)
+            [] -> error "Invalid Input"
+
+-- We can create a Parser Monad to handle some of the type checking for us
+
+newtype Parser a = P (String -> [(a, String)])
+instance Monad Parser where
+    return v = P (\input -> [(v, input)])
+    p >>= f = P (\input -> case parse p input of -- Define the bind operation
+                             [] -> []
+                             [(v, out)] -> parse (f v))
+
+instance MonadPlus Parser where
+    mzero = P (\input -> [])
+    p `mplus` q = P (\input -> case parse p input of
+                                 [] -> parse q input
+                                 [(v, out)] -> [(v, out)])
+
+failure :: Parser a
+failure = mzero
+#+END_SRC
+
+* Assignment N3
+  * Complete a ~Maybe~-based paraser to parse a program in a single language
+  * Write an interpretter for this language
+  * The language is the one from above. ([[*The Language to Parse][The Language to Parse]])

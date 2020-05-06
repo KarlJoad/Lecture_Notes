@@ -1,0 +1,8 @@
+#+TITLE: Lecture 7
+#+AUTHOR: Karl Hallsby
+#+DATE: May 06, 2020
+
+* Questions
+  * Device Directory
+  * File Allocation and FAT
+    - Go over it again. I don't think I fully understood everything.

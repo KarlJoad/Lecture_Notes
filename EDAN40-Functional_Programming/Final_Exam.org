@@ -1,0 +1,10 @@
+#+TITLE: Final Exam Information
+#+AUTHOR: Karl Hallsby
+
+  * Digital exam
+  * Done through Canvas
+  * Need a webcam for this
+    - Will record me during my exam taking period.
+  * Locks browser for security
+  * Similar to previous exams
+    - Look at those for studying

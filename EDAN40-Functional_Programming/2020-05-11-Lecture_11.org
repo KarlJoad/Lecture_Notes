@@ -1,0 +1,312 @@
+#+TITLE: Lecture 11: Program Verification
+#+AUTHOR: Karl Hallsby
+#+DATE: May 11, 2020
+
+* Equational Reasoning
+  * Functional Programming is a way to use only mathematical functions
+  * No side effects
+  * No state
+  * Given some input, get the same output every time
+  * Functions that works in a pure way can have equational reasoning applied
+
+** Definition
+   * We can replace anything on the left side with the right side
+   * We can replace anything on the right side with the left side
+$xy = yx$
+
+** Consequences
+   * Some equations require additional computation on one side compared to the other
+$x(a+b) = xa + xb$
+   * LHS has 2 arithmetic operations
+   * RHS has 3 arithmetic operations
+   * *Functionally they are equivalent, computationally they are not*
+
+* Haskell and Equational Reasoning
+#+BEGIN_SRC haskell
+double :: Int -> Int
+double x = x+x
+#+END_SRC
+  * Function Definition
+  * Property of a function
+    - Can replace every instance of ~double x~ with ~x+x~ (Applying a function)
+    - Can replace every instance of ~x+x~ with ~double x~ (Unapplying a function)
+    - Note that *not all* functions obey the apply/unapply rule above. For instance,
+#+BEGIN_SRC haskell
+isZero :: Int -> Bool
+isZero 0 = True -- Bidirectional
+isZero n = False -- NOT bidirectional
+{- Not bidirectional because if we replace False with isZero n, then
+   we do not know what n is. For all we know, n=0 now.
+   If we are pure, we replace False with isZero n and we do not know what n is.
+ -}
+
+isZero2 :: Int -> Bool
+isZero2 0 = True
+isZero2 n | n /= 0 = False
+{- This version of the isZero function is bidirectional.
+   Presence of condition is explicit
+ -}
+#+END_SRC
+  * Makes equations /independent of execution order/
+
+** Simple Examples
+*** ~reverse~
+#+BEGIN_SRC haskell
+reverse :: [a] -> [a]
+reverse [] = []
+reverse (x:xs) = reverse xs ++ [x]
+{- reverse [x] = [x] for any atomic x (i.e. x is not a list)
+   reverse [x]
+   = reverse (x:[])
+   = (reverse []) ++ [x]
+   = [] ++ [x]
+   = [x]
+
+   Chaning reverse [x] to [x] does not change the meaning of a program, but
+   changes the efficiency.
+   A list of one element does not need to be reversed, because its reverse is
+   itself.
+ -}
+#+END_SRC
+
+*** ~not~
+#+BEGIN_SRC haskell
+not :: Bool -> Bool
+not False = True
+not True = False
+{- Pattern matching in the definition forces case analysis on arguments.
+   For example, for not (not b) = b, we need to consider the patterns into account.
+   Meaning we need to evaluate the relation assuming b = False AND b = True
+ -}
+#+END_SRC
+    * When a function is defined in terms of patterns, the function must be tested for each pattern.
+
+** Induction on Numbers
+#+BEGIN_SRC haskell
+data Nat = Zero
+         | Succ Nat
+{- Only values are:
+   Zero
+   Succ Zero
+   Succ (Succ Zero)
+   Succ (Succ (Succ Zero))
+
+   Note that there is no "infinity" case here.
+ -}
+#+END_SRC
+   * Given a property of one element in a set, prove an extension of the set
+   * Proving a proprty $p$ holds for all elements of a recursive type (~Nat~)
+
+     1) Base case
+     2) Using the assumption, extend the problem by 1 element/unit
+
+#+BEGIN_SRC haskell
+add :: Nat -> Nat -> Nat
+add Zero m = m
+add (Succ n) m = Succ (add n m)
+#+END_SRC
+
+Prove by induction that adding ~Zero~ and something does not change the value.
+Case 1: ~add Zero m = m~ <- Directly from the definition.
+Assume that this is true and prove: ~add n Zero = n~
+Base Case: ~add Zero Zero = Zero~ <- Using Case 1.
+Inductive Step: ~add (Succ n) Zero = Succ (add n Zero)~ <- Apply second case of function definition.
+Inductive Step: ~Succ (add n Zero) = Succ n~ <- Simplify by assumption
+
+** Induction on Lists
+   * Induction applies to all other enumerable types that are isomorphic with natural numbers
+   * For example, Haskell's ~Integer~
+#+BEGIN_SRC haskell
+replicate :: Integer -> a -> [a]
+replicate 0 _ = []
+replicate n x = x : replicate (n-1) x
+#+END_SRC
+
+Prove: ~length (replicate n x) = n~ for all $n \geq 0$.
+Base Case: ~length (replicate 0 x) = length [] = 0~.
+Induction:
+\begin{align*}
+length (replicate (n+1) x) &= length (x : replicate n x) \\
+&= 1 + length (replicate n x) \\
+&= 1 + n \\
+&= n + 1
+\end{align*}
+
+#+BEGIN_SRC haskell
+reverse :: [a] -> [a]
+reverse [] = []
+reverse (x:xs) = reverse xs ++ [x]
+#+END_SRC
+
+Prove: ~reverse (reverse xs) = xs~
+Base Case: ~reverse (reverse []) = reverse [] = []~
+Inductive:
+\begin{align*}
+reverse (reverse (x:xs)) &= reverse (reverse xs ++ [x]) \\
+&= reverse [x] ++ reverse (reverse xs) \\ % Assuming we have already provien how reverse is spread over ++
+&= [x] ++ reverse (reverse xs) \\
+&= [x] ++ xs \\ % We are assuming reverse (reverse xs) is already proven
+&= x:xs \\ % Assuming reverse [x] = [x] is already proven
+\end{align*}
+
+Used a /lemma/: The distributivity of ~reverse~ over ~append~
+Prove this lemma
+Base Case:
+\begin{align*}
+reverse ([] ++ ys) &= reverse ys
+&= reverse ys ++ [] \\
+&= reverse yx ++ reverse []
+\end{align*}
+
+Inductive:
+\begin{align*}
+reverse ((x:xs) ++ ys) &= reverse (x : (xs ++ ys)) \\
+&= reverse (xs ++ ys) ++ [x] \\
+&= (reverse ys ++ reverse xs) ++ [x] \\ % Use our assumption
+&= reverse ys ++ (reverse xs ++ [x]) \\ % Use associativity of append
+&= reverse ys ++ reverse (x:xs)
+\end{align*}
+
+Lemma of distributivity of append is proven true.
+
+** Induction on Lists with Functors
+#+BEGIN_SRC haskell
+fmap id = id                   -- Functor Law 1
+fmap (g . h) = fmap g . fmap h -- Functor Law 2
+#+END_SRC
+
+   * Can verify using induction over lists
+   * More generally, over recursive data structures
+     - Or functor types, where ~fmap~ is defined
+
+#+BEGIN_SRC haskell
+fmap :: (a -> b) -> [a] -> [b]
+fmap g [] = []
+fmap g (x:xs) = g x : fmap g xs
+#+END_SRC
+Prove: Functor Law 1, ~fmap id xs = xs = id xs~
+Base Case: ~fmap g [] = []~
+\begin{align*}
+fmap id [] &= id [] \\
+&= []
+\end{align*}
+
+Inductive: ~fmap id (x:xs) = id (x:xs)~
+\begin{align*}
+fmap id (x:xs) &= id x : fmap id xs \\ % Apply fmap function definition
+&= x : fmap id xs \\ % Apply id x function
+&= x : id xs \\ % Inductive assumption for the thing we are proving
+&= x : xs \\
+&= id (x:xs) \\
+\end{align*}
+Thus, we have proven, by induction, that ~fmap id~ is equal to ~id~ everytime
+\begin{equation*}
+fmap id = id
+\end{equation*}
+
+*Exercise: Prove Functor Law 2*, ~fmap (g . h) = fmap g . fmap h~
+
+** Make ~append~ Vanish
+#+BEGIN_SRC haskell
+reverse :: [a] -> [a]
+reverse [] = []
+reverse (x:xs) = reverse xs ++ [x]
+-- This is both the naive approach and the literal definition of this process.
+#+END_SRC
+
+What is the complexity of this function?
+Append (~++~) is linear with respect to length of remaining list (~xs~).
+Reverse then uses append a linear number of times in ~reverse xs~.
+This is $O(n^{2})$.
+
+*** How can we improve this?
+We can use an accumulator.
+This way we combine the behavior of ~reverse~ and ~++~.
+This would create ~reverse'~.
+#+BEGIN_SRC haskell
+reverse' xs ys = reverse xs ++ ys
+#+END_SRC
+
+Base Case:
+\begin{align*}
+reverse' [] ys &= reverse [] ++ ys \\
+&= [] ++ ys \\
+&= ys
+\end{align*}
+
+Inductive:
+\begin{align*}
+reverse' (x:xs) ys &= reverse (x:xs) ++ ys \\
+&= (reverse xs ++ [x]) ++ ys \\ % By definition of reverse on (x:xs)
+&= reverse xs ++ ([x] ++ ys) \\ % By associativity of ++
+&= reverse' xs ([x] ++ ys) \\ % "Unapply" the definition of reverse'
+&= reverse' xs (x:ys) \\ % "Unapply" the append
+\end{align*}
+
+Thus, we can conclude
+#+BEGIN_SRC haskell
+reverse' :: [a] -> [a] -> [a]
+reverse' [] ys = ys
+reverse' (x:xs) ys = reverse' xs (x:ys)
+#+END_SRC
+It suffices to show by induction that
+~reverse' xs ys = reverse xs ++ ys~
+As our definition of ~reverse'~ does not use ~reverse~, we can redefine it
+#+BEGIN_SRC haskell
+reverse' :: [a] -> [a]
+reverse' xs = reverse' xs []
+#+END_SRC
+Thus, the time complexity for this is Linear, $O(n)$.
+
+** Induction on Tree-like Types
+#+BEGIN_SRC haskell
+data Tree = Leaf Int
+          | Node Tree Tree
+{- Only Ints can be contained.
+   The Ints can only be contained in a Leaf node.
+ -}
+
+flatten :: Tree -> [Int]
+flatten (Leaf n) = [n]
+flatten (Node left right) = flatten left ++ flatten right
+{- The use of append makes the flatten function inefficient.
+   To fix this, we need to prove how it functions through induction.
+   By proving it,, we will find a more efficient way to flatten the tree.
+
+   In addition, we must prove the question with each possible data construction.
+ -}
+#+END_SRC
+
+Let's use the accumulator trick again.
+#+BEGIN_SRC haskell
+flatten' tree ns = flatten tree ++ ns
+#+END_SRC
+
+Now, the induction must work on branches instead of successors.
+Prove: ~flatten' tree ns = flatten tree ++ ns~
+Base Case: Is a ~Leaf Int~ of the ~Tree~.
+\begin{align*}
+flatten' (Leaf n) ns &= flatten (Leaf n) ++ ns \\
+&= [n] ++ ns \\
+&= n : ns
+\end{align*}
+
+Inductive:
+\begin{align*}
+flatten' (Node left right) ns &= (flatten left ++ flatten right) ++ ns \\ % Apply the flatten' definition
+&= flatten left ++ (flatten right ++ ns) \\ % Associativity of append
+&= flatten' left (flatten right ++ ns) \\ % "Unapply" the flatten' function
+&= flatten' left (flatten' right ns) \\ % "Unapply" the flatten' function
+\end{align*}
+
+So, we can make a new ~flatten~ defined as below
+#+BEGIN_SRC haskell
+flatten' :: Tree -> [Int] -> [Int]
+flatten' (Leaf n) ns = n : ns
+flatten' (Node left right) ns = flatten' left (flatten' right ns)
+#+END_SRC
+Because there is no reliance on ~flatten~ in ~flatten'~, so we can say
+#+BEGIN_SRC haskell
+flatten :: Tree -> [Int]
+flatten t = flatten' t []
+#+END_SRC

@@ -1,0 +1,13 @@
+#+TITLE: Lecture 9
+#+AUTHOR: Karl Hallsby
+#+DATE: May 13, 2020
+
+* Questions
+** Domains
+I am still confused on what domains are.
+They are similar to UIDs on UNIX,
+
+Isn't a ring-based structure used for Kernel/User interactions?
+
+What does a "Print" capability mean? Printing to printer?
+Doesn't that also require Read access?

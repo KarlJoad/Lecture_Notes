@@ -1,0 +1,288 @@
+#+TITLE: Lecture 12, Lambda Calculus
+#+AUTHOR: Karl Hallsby
+#+DATE: May 13, 2020
+
+* Category Theory
+** Categories
+ A /category C/ consists of 3 entities:
+   1) Class /ob(C)/ of /objects/ - Types
+   2) Class /hom(C)/ of /morphisms/ (/maps/ or /arrows/).
+      * Each morphism /f/ has a unique /source object a/ and /target object b/.
+      * The expression f : a \rightarrow b is read "/f/ is a morphism from /a/ to /b/.
+      * /hom(a,b)/ denotes the class of *all* morphisms from /a/ to /b/
+   3) Morphism Composition
+      * Allow us to compose morphisms together
+      * Binary operation (small centered circle)
+      * This requires associativity
+	- f : a -> b, g : b -> c, h : c -> d then h . (g . f) = (h . g) . f
+      * Identity morphism over every object
+	- 1x : x -> x
+	- 1b . f = f = f.1a
+
+** Functors
+/Functors/ are structure-preserving maps *between* categories.
+
+*** Covariant Functors
+/Covariant/ functor /F/ from a category /C/ to a category /D/, written F : C -> D consists of:
+   1) For each object /x/ in /C/ there is an associated object /F(x)/ in /D/
+   2) For each morphism f : x -> y in /C/, a morphism F(f) : F(x) -> F(y)
+
+Such that the 2 properties hold
+   1) For every object /x/ in /C/, F(1x) = 1F(x)
+   2) For all morphisms f : x -> y and g : y -> z, F(g.f) = F(g).F(f)
+
+*** Contravariant Functors
+/Contravariant/ functor is like covariant, except it reverses all morphisms (arrows)
+
+*** Functors in Haskell
+#+BEGIN_SRC haskell
+class Functor f where
+    fmap :: (a -> b) -> f a -> f b
+
+-- Lists are also functors
+instance Functor [] where
+    fmap = map
+
+-- We can defined our own datatype that can be part of the functor class
+data Tree a = Leaf a
+            | Branch (Tree a) (Tree a)
+
+instance Functor Tree where
+    fmap f (Leaf x) = Leaf (f x)
+    fmap f (Branch t1 t2) = Branch (fmap f t1) (fmap f t2)
+#+END_SRC
+
+** Applicative Functors
+#+BEGIN_SRC haskell
+{-Applicative allows us to pass functions around INSIDE the Functor datatype
+ -}
+class (Functor f) => Applicative f where
+{- Applicative extends the definition of Functor.
+   Thus, Functor f must be defined if Applicative f is to be defined.
+ -}
+    pure :: a -> f a -- Like an id function.
+    {- Lifts the given thing to the Applicative's type.
+       There is no way to provide something that is nothing/failure to pure,
+       so there is no definition of pure to a Nothing.
+     -}
+    (<*>) :: f (a -> b) -> f a -> f b
+
+instance Applicative Maybe where
+    pure = Just
+    Nothing <*> _ = Nothing -- There is no way to apply a function to Nothing
+    (Just f) <*> something = fmap f something
+
+instance Applicative Tree where
+    pure = Leaf
+#+END_SRC
+
+** Monads
+"A Haskell monad corresponds to a /strong monad/ in a /cartesian closed category/
+A category is cartesian closed if it has enough structure to interpre \lambda-calculus.
+In particular, associated with any pair of objects (types) x and y there is an object [x -> y] representing the space of all functions from x to y.
+M is a functor if there exists (for any arrow /f/) the arrow fmap f obeying the functor laws.
+A functor is /strong/ if it itself is represented by a single arrow /fmap." P. Wadler (1990)
+
+"A monad is a monoid in the category of endofunctors"
+
+Note: ~>=>~ is called ~>@>~ in Thomson's book.
+#+BEGIN_SRC haskell
+-- Monads are also Functors
+cass Monad m where
+     (>>=) :: m a -> (a -> m b) -> m b
+     return :: a -> m a -- Like the pure function from Applicative
+     -- Below functions have default definitions
+     (>>) :: m a -> m b -> m b
+     fail :: String -> m a
+
+{- The most minimal definition of a Monad requires ONLY >>= and return
+    as the other 2 have a default definition, as shown below
+m >> k = m >>= \_ -> k
+fail s = error s
+ -}
+#+END_SRC
+
+/Kleisli Triple/
+   1) A *type construction* for type /a/ create /M a/
+   2) A *unit function* a -> M a (~return~ in Haskell)
+   3) A *binding operation* of polymorphic type Ma -> (a -> M b) -> M b, which has 4 stages (informally)
+      1. The monad-related structure of the first argument is "pierced" to expose any number of valies in the underlying type a.
+      2. The given function (a -> M b) is applied to all those values to obtain values of type (M b).
+      3. The monad-related structure on those values is also pierced, exposing the values of type b.
+      4. Lastly, the monad-related structure is reassembled over all the results, giving a single value of type (M b).
+
+*** Categorical view of Haskell Monads
+Instead of ~return~ and ~>>=~, we can define a monad by ~return~ (or ~pure), ~fmap~, and ~join~.
+#+BEGIN_SRC haskell
+fmap :: (a -> b) -> m a -> m b
+join :: m (m a) -> m a
+
+-- With mutual relations as follows
+(fmap f) t == t >>= (\x -> return (f x))
+{- This is sometimes written
+   fmap f t == >>=
+ -}
+join n == n >>= id
+
+t >>= g == join ((fmap g) t)
+#+END_SRC
+
+**** Pointed Functors
+For /pointed functors/ in the same category
+#+BEGIN_SRC haskell
+return . f = fmap f . return
+
+class Pointed f where
+    return :: a -> f a
+    return point :: a -> f a
+#+END_SRC
+
+The Monad laws can be expressed with ~join~
+
+*** Another variant
+#+BEGIN_SRC haskell
+liftM :: (Monad m) => (a -> b) -> (m a -> m b)
+liftM f = \x -> do {x' <- x; return (f x/)}
+-- liftM sin (Just 0) evaluates to (Just 0.0)
+#+END_SRC
+
+*** The List monad
+#+BEGIN_SRC haskell
+instance Functor [] where
+    fmap = map
+
+instance Monad [] where
+    return x = [x]
+    return xs >>= f = concat (map f xs)
+#+END_SRC
+
+* Lambda Calculus, \lambda-Calculus
+  * Introduce by Alonzo Church (1933)
+  * A set of \lambda -terms and rules to manipulate them
+  * Origin of functional programming (LISP, 1960)
+  * Equivalent expressivity to recursive functions (Godel) and Turing Machines
+
+** Introduction
+\lambda x.E(x)
+
+This denotes a function that, given an input x, computes E(x).
+To apply this function, one substitutes the input for the variable and evaluates the body.
+For example, the below function is equivalent to ~succ~ in Haskell
+
+\lambda x.(x+1)
+
+To apply this lambda function, for example to 7, one performs substitution of the lambda's parameter.
+
+(\lambda x.(x+1))7
+= (7+1) Replace all occurrences of x in \lambda x with 7.
+= 8
+
+This is inherently curried.
+
+** Pure Lambda Calculus
+In pure lambda calculus, there are only:
+   * Variables. f, g, h, ..., x, y, z, ...
+   * Operators for \lambda -abstraction and \lambda application
+
+\lambda -terms are recursively created from these
+   * Any variable x is a \lambda term
+   * If M and N are \lambda terms, then MN is a \lambda term (functional application)
+   * If M is a \lambda term and x is a variable, then \lambda x.M is a \lambda term (functional abstraction)
+
+Application is *NOT* associative.
+Usually (MN)P \neq M(NP)
+Application is assumed to be left-associative, thus MNP is (MN)P
+
+   * In pure \lambda calculus, \lambda terms serve poth as functions and as data.
+     - This means that the +1 in the big example is an informality to make things easier
+   * Substitution of parameters for their arguments is called \beta -reduction
+   * Renaming variables (\lambda x.zx to \lambda y.zy) is called \alpha -reduction.
+   * Computations in \lambda calculus is performed by \beta reducing terms whenever possible and for as long as possible
+   * Church-Rosser Theorem: The order of reductions does not matter (as there will always be some common final reduction)
+   * A term is in /normal form/ if no \beta reductions can be applied
+     - Halting state of Turing Machines
+   * There are terms with no normal forms
+     - These correspond to non-halting computations of Turing Machines.
+     - (\lamba x.xx)(\lambda x.xx)
+       + The first lambda has the second lambda applied to the second
+       + This substitution yields the same expression as the one above.
+
+** Church Numerals
+\begin{align*}
+0 &= \lambda f.\lambda x.x \\
+1 &= \lambda f. \lambda x. fx \\
+2 &= \lambda f. \lambda x. f(f x) \\
+3 &= \lambda f. \lambda x. f(f (f x)) \\
+&\vdots
+n &= \lambda f. \lambda x. f^{n} x \\
+\end{align*}
+
+Then successor may be defined as
+\lambda m.\lambda f.\lambda x.f (m f x)
+
+You *must* define numbers in this way for this computation to complete.
+
+We can formulate these things in Haskell if we want to
+#+BEGIN_SRC haskell
+type ChurchNatural a = (a -> a) -> (a -> a)
+
+zeroC, oneC, twoC :: ChurchNatural a
+zeroC f = id -- zeroC = const id, adding zero to something is something
+oneC f = f -- oneC = id
+twoC f = f.f
+
+succC n f = f.(n f)
+threeC = succC twoC
+
+plusC x y f = (x f).(y f)
+timeC x y = x.y
+expC x y = y x
+#+END_SRC
+
+** Recursive Functions
+Function N^k -> N intuitively represents *all* the computable functions
+N is set of natural numbers, where k is a finite number of arguments.
+   1) /Successor/: The function s: N -> N given by s(x) = x+1 is computable.
+   2) /Zero/: The function z : N^0 -> N given by z() = 0 is computable.
+   3) /Projections/: The functions \pi_k^n : N^n -> N given by \pi_k^n(x_1,...,x_n) = x_k for 1 <= k <= n is computable.
+   4) /Composition/: If f : N^k -> N and g1, ..., gk : N^n -> N are computable, then so it hte function f.(g_1,...,g_k): N^n -> N that on input \hat{x} = x_1,...,x_n gives f(g_1(\hat{x}), ..., g_k(\hat{x})).
+   5) /Primitive Recursion/: If h_i : N^n-1 -> N and g_i : N^{n+k} -> N are computable, 1 <= i <= k, then so are function f_i : N^n -> N, 1<= i < k defined by mutual induction as follows
+      f_i (0, \hat{x}) = h_i (\hat{x})
+      f_i(x+1, \hat{x}) = g_i (x, \hat{x}, f_1(x,\hat{x}), ..., f_k(x, \hat{x}))
+      where \hat{x} = x_2,...,x_n
+   6) /Unbounded Minimization/: If g : N^{n+1} -> N is computable, then so is the function f : N^n -> N that on input \hat[x} = x_1, ...x_n gives the least y such that g(z, \hat{x}) is defined for all z <=y and g(y, \hat{x}) = 0 if such a y exists and is undefined otherwise.
+      We denote this by f(\hat{x}) = \mu y.(g(y,\hat{x}) = 0)
+
+   7) /Primitive Recursive Functions/ Obey rules 1-5
+   8) /\mu recursive functions/ obey rules 1-6
+   9) There exists a non-primitive (total) recursive function (Ackermann's function)
+      A(0, y) = y+1
+      A(x+1, 0) = A(x, 1)
+      A(x+1, y+1) = A(x, A(x+1, y))
+   10) Primitive recursive functions are total, \mu recursion may be partial
+   11) Recursive functions correspond to Turing Machines
+
+* Turing Machines
+They are a straightforward model to express computation that is sufficiently powerful for computing anything you may want to.
+You can express things you want to compute in terms of a Turing machine if you want to.
+
+Turing machines have:
+  * A potentially infinitely long tape
+  * An alphabet, with a "blank" character
+  * A head over the tape
+  * A read or write operation
+  * Left or right tape movement
+  * Finitely many states
+    - Starting state
+    - Ending state (F)
+    - Intermediate states
+  * Transition function (which may be partial)
+    \delta : (Q\F) \times \Gamma -> Q \times Gamma \times \lbrace L, R \rbrace
+    - Q\F refers to the transition to any state that is not the Final state
+    - Q is the next state to go to
+    - \Gamma is the character on the state
+    - {L, R} refers to head movement left or right
+  * /Universal Turing Machines/
+    - You provide the program as tape contents
+    - One single program that can interpret other programs
+    - This comes back to the idea that code can be data and vice versa

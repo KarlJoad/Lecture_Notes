@@ -1,0 +1,141 @@
+#+TITLE: Lecture 31
+#+AUTHOR: Karl Hallsby
+#+DATE: May 20, 2020
+
+* Reactive Programming
+  * When you program for how to react to events
+  * The actions taken for an input should be:
+    - Explainable
+    - Reproducible
+    - Standard
+
+* Reactivity
+  Reactivity == time-dependent responsiveness
+  1) Behaviors (Signals, Fluents, Streams) - Functions of time
+  2) Occurrences - Are value-pairs $Val \times Time$
+     * Something that we are finding in time
+     * Occurrences of Ints or Functions
+     * Anything that can be indexed at a particular time occurrence
+  3) Events - Sets of occurrences (Linear lists in our case)
+
+Some other interesting issues:
+  * Continuous vs. Discrete Time
+    - Floating-point time
+    - Integer time
+  * Different kind of approaches to reactivity
+    - "Embedding" (Classical method)
+      + Map timeline to a synonomous type, like floats
+      + Make a pure model of the stream of events that come in
+      + Embed in this sense is embedding into the compiler and its primitive types
+    - Signal-Based
+    - $n$-ary FRP
+  * Semantics vs. Interpretation
+
+** Behaviors
+#+BEGIN_SRC haskell
+newtype Behavior a =
+    Behavior {
+      at :: Time -> a
+    }
+
+myName :: Behavior String
+myName `at` yesterday
+
+type Behavior a = Time -> a -- Conceptually
+type Time = Float -- Make continuous
+
+-- Lifting many functions from a to Behavior a
+timeTrans :: Behavior Time -> Behavior a -> Behavior a
+timeTrans f a t = a (f t)
+{- Given a function of Time and a Behavior, construct a new Behavior with the
+   function applied to the body of the Behavior
+ -}
+
+-- We can modify many functions to bit our definition of Behavior
+integral :: Behavior Float -> Behavior Float
+derivative :: Behavior Float -> Behavior Float
+#+END_SRC
+
+** Events
+#+BEGIN_SRC haskell
+type Event a = [(a, Time)] -- Conceptually
+untilB :: Behavior a -> Event (Behavior a) -> Behavior a
+switch :: Behavior a -> Event (Behavior a) -> Behavior a
+
+-- Event mapping
+(->>) :: Event a -> b -> Event b
+(=>>) :: Event a -> (a -> Event b) -> Event b
+
+-- Event choice
+(.|.) :: Event a -> Event a -> Event a
+
+-- Snapshot events
+snapshot_ :: Event a -> Behavior b -> Event b
+#+END_SRC
+
+** Implementation Issues
+#+BEGIN_SRC haskell
+-- Reactive banana library offers a library for reactive programming
+filter :: (a-> Bool) -> Event a -> Event a
+accumE :: a -> Event (a -> a) -> Event a
+stepper :: a -> Event a -> Behavior a
+apply :: Behavior (a-> b) -> Event a -> Event b
+
+-- These concepts map to these typeclasses in a well-defined fashion
+instance Functor Event
+instance Functor Behavior
+instance Applicative Behavior
+instance Monoid (Event a)
+#+END_SRC
+
+** Signal Functions
+/signal/ - Primitive concepts
+#+BEGIN_SRC haskell
+Signal a = Time -> a -- Time is considered to be real-valued.
+
+-- Informally, If SF is a primitive type
+SF a b = Signal a -> Signal b
+#+END_SRC
+
+   * They, in essence, describe /how/ changes to things happen over some amount of time
+
+*** Arrows
+Arrows a b c represents a proces that takes as input something of type b and outputs of something of type c
+#+BEGIN_SRC haskell
+arr :: (Arrow a) => (b -> c) -> a b c
+
+-- Arrows are composed (>>>) while first and second create new arrows
+(>>>) :: (Arrow a) => a b c -> a c d -> a b d
+-- Logically, if b->c and c->d, then composing them causes b->d
+first :: (Arrow a) => a b c -> a (b, d) (c, d)
+second :: (Arrow a) => a b c -> a (d, b) (d, c)
+
+arr :: (a->b) -> SF a b
+arr f = \s -> \t -> f (s t)
+
+(>>>) :: Sf a b -> SF b c ->> SF a c
+sf1 >>> sf2 = \s -> \t -> (sf2 (sf1 s)) t = sf2 . sf1
+#+END_SRC
+
+  * ~integral :: Fractional a => SF a a~ is a stateful primitive
+    - Depends not ONLY on t but maybe also on $[0, t]$
+
+* Final Exam
+  * Taken on Canvas
+  * Use Test exam to test the hardware and software used
+  * Respondus *DOES NOT* work on Linux
+  * Canvas will use the camera!
+    - System will flag "suspicious" behavior
+    - Will be manually reviewed by Jacek
+  * Exam will be split into 3 parts, each 90 minutes long
+    - Cannot leave desk while completing each of the parts.
+    - Must be done in order
+    - Only offered in order
+    - They are offered for a 90 minute period of time, after which they close
+  * Multiple questions in each part
+  * Similar to previous exams
+  * Allowed Materials:
+    - Have access to the ~Prelude.hs~ library
+    - No Textbook
+    - No Internet
+    - No Communications with other people

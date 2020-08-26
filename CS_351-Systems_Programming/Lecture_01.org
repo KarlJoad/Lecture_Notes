@@ -2,4 +2,67 @@
 #+AUTHOR: Karl Hallsby
 #+DATE: August 26, 2020
 
-*
+* Lab Assignment
+  * Read whitepaper about VirtualBox
+  * Set up 2 Ubuntu VMs
+  * Screenshot before, during, and after each command in list
+  * Include all screenshots in the report
+  * Can use LaTeX to write
+  * Submit ONLY PDFs
+
+* Course Overview
+** OSs
+   * Some Operating Systems
+     - Windows
+     - Linux
+     - MacOS
+     - iOS
+     - Android
+   * OS /kernel/
+     - Smallest subset of OS code needed to bootstrap system
+     - Provides basic services to user programs
+     - "Smallest" is debatable
+     - Memory management
+     - Users interact with kernel through APIs
+   * API - Collection of documented functions to work as an interface
+     - Parameters needed
+     - Results returned
+     - Any side effects caused (if that's a thing to worry about)
+   * OS API = System call
+     - OS behaves as a very low-level library
+     - Provides services to user processes
+** Process
+   * Process = Program in execution
+     - Code (Text portion)
+     - Data (Global, local, dynamic)
+       + Variables
+       + State information
+     - OS kernel data for tracking
+     - OS hides the complexities of a machine from processes through /abstraction/
+
+** Primary OS Abstractions
+   * Simplify the usage and discussion of software
+   * Logical control flow
+   * Exceptional (extra-process) control flow
+   * Logical Address Space
+   * Uniform I/O
+   * Interprocess communication
+     - Sockets
+     - Pipes
+     - Needed because processes *need* a single defined memory space
+     - Processes can only exist within one memory space
+   * Without these abstractions, *every* program needed to include core OS functionality
+
+*** Software Threads
+    * Allow multiple paths of execution *in a SINGLE PROCESS*
+    * Threads can communicate without other IPC mechanisms
+    * Can communicate through memory
+    * Need a way to control concurrency
+      - Deadlock
+      - Race conditions
+
+*** Hardware Threads
+    * Smart execution on the CPU
+    * Out of the OS's control, for the most part
+    * Usually exposed to the OS as some multiple of the physical number of cores
+    * "Hyperthreading"

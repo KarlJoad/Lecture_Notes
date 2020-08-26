@@ -1,0 +1,5 @@
+#+TITLE: Lecture 01
+#+AUTHOR: Karl Hallsby
+#+DATE: August 26, 2020
+
+*

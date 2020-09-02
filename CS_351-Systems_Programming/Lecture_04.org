@@ -1,0 +1,65 @@
+#+TITLE: Lecture 4
+#+AUTHOR: Karl Hallsby
+#+DATE: September 2, 2020
+
+* I/O Devices
+
+* Storage Devices
+
+* Processor (CPU)
+Basic function is to execute instructions.
+
+** ALU
+These instructions include:
+   * arithmetic
+   * boolean
+   * memory fetching
+   * Multiple Instruction, Multiple Data
+
+** Control Unit
+   * Controls processing of instructions
+   * Controls movement of data within the CPU
+
+** Interface Unit
+   * Move instructions and data between CPU and other hardware components
+   * /Bus/- Bundle of wires for power and data
+
+** Multicore Processors
+   * Each core has an independent execution pipeline
+   * Each core may be doing something different
+   * Crossing between dies on the same CPU is costly
+   * Crossing CPUs is even more costly
+   * Multidie CPUs are becoming quite a bit more prevalent.
+
+* Graphics (GPU)
+  * Symmetric Multiprocessors
+  * Highly parallelized tasks
+  * GPU is like a CPU, in terms of the very basic architecture
+  * Optimized to render graphics
+  * Run at lower frequencies
+  * Lose ability to execute different instructions on different cores
+    - Single Instruction, Multiple Data
+
+* Memory Hierarchy
+** Processor Registers
+** Processor Cache
+** Random Access Memory
+** Flash Memory
+   * SATA/SAS
+   * NVMe
+   * DDR
+** Hard Drives
+   * Mechanical
+   * Slowest
+   * Highest Capacity
+   * Highest Latency
+   * Consume a lot of power, compared to SSDs
+** Tape Drives
+
+* Network
+  * Need a comunication channel
+  * Switches needed to interconnect computers
+  * Routers need for routing packets
+
+** Network Interface Cards (NIC)
+   * Physical connections

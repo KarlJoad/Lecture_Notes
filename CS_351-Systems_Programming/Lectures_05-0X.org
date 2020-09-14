@@ -1,4 +1,4 @@
-#+TITLE: Lectures 05, A C Primer
+#+TITLE: Lectures 05-0X, A C Primer
 #+AUTHOR: Karl Hallsby
 #+DATE: September 09, 2020
 
@@ -131,6 +131,30 @@ c = 'D', i = 1, u = 4294967295, f =10.00000
    * *MUST* be _declared_ before use.
    * This declaration implicitly *allocates* storage for the underlying data.
    * Variables can be declared with =global= for program-wide usage.
+   * Variables do *not* have to be visible to be alive, and vice versa.
+
+*** Visibility
+    * /Where/ a symbol can be seen from.
+      - If it cannot be seen, then it cannot be used in any way
+    * /How/ can we refer to it?
+      - What identifiers/modifiers/namespacing is needed to identify this symbol?
+    * ~global~ variables must be declared outside any function.
+      - Not deallocated *throughout* a program's execution.
+      - Always available until the program terminates.
+    * Local variables are defined within a function.
+      - The [[*Lifetime][Lifetime]] of a stack-based local variable is the scope of the variable
+      - Typically, the scope is a function, but can be an ~if~, a ~while~, etc.
+    * ~extern~ on a variable tells the compiler to look for the global variable that is in another file
+      - Use this if the global variable is *Declared and Defined* in a ~.c~ file, and cannot be defined in a ~.h~ file.
+      - This also allows you to separate the *declaration* and *definition* of a variable
+    * ~static~ limits the visibility of a symbol to its file.
+
+*** Lifetime
+    * /How Long/ does allocated storage space remain usable?
+    * This is distinctly different than a symbol not being visible.
+      - Pointers are a good example of this.
+      - A pointer can have the memory underneath it deallocated, ending the lifetime of the pointer, but keeping the pointer in-scope.
+    * ~static~ initializes the variable in the static portion of the binary, meaning it is *always* alive.
 
 ** Functions
    * C's /top-level/ modules
@@ -138,6 +162,17 @@ c = 'D', i = 1, u = 4294967295, f =10.00000
 *** Declaration
     * Announce that a function with those input and output parameters
     * Included in /header/ =.h= files
+
+*** Passing Parameters
+**** Pass-by-Value
+     * Make a copy of the value passed to a function and give it a new name
+     * This is a *COPY*, meaning modifications to the copy *DO NOT* affect the original
+
+**** Pass-by-Reference
+     * Pass a pointer into the called function
+     * This gives the called function access to the thing given to it.
+     * This allows for efficient passing of data from one function to another.
+     * This is particularly valuable for large ~struct~, arrays, etc.
 
 *** Definition
     * The actual implementation
@@ -173,6 +208,57 @@ int main(int argc, char *argv[]) {
 	return 0;
 }
 #+END_SRC
+
+* Pointers
+This should technically go in [[*Syntax and Structure][Syntax and Structure]], but pointers deserve their own section.
+
+A /pointer/ is a variable declared to store a memory address
+A /memory address/ is the address to which we can refer to data in-memory.
+The size of the pointer is determined by the architecture of the CPU.
+
+A pointer is designated by its *declared* type, not its contents.
+This allows the pointer's contents to be re-interpreted based on the type of the pointer.
+
+** Pointer Syntax
+#+BEGIN_SRC c
+#include <stdio.h>
+
+int main(void) {
+	int i, j, *p, *q;
+
+	i = 10;       /* i is defined to have the value 10 */
+	p = &j;       /* j is uninitialized still */
+	q = p;        /* Set the pointer q to the address in p */
+	,*q = i;      /* Store i in the location q POINTS to, which is j right now */
+	,*p = *q * 2; /* Multply the value q POINTS to by 2 and store in the location POINTED to by p */
+	printf("i=%d, j=%d, *p=%d, *q=%d\n", i, j, *p, *q);
+	return 0;
+}
+#+END_SRC
+
+This outputs: "~i=10, j=20, *p=20, *q=20~"
+
+*** Declaration
+#+BEGIN_SRC c
+/* type *var_name; */
+int *ip;
+char *cp;
+struct student *sp;
+
+int i = 5; /* i is an int containing 5 */
+int *p;    /* p is a POINTER to an int */
+
+p = &i;    /* Store the ADDRESS of i in p */
+
+int j;     /* j is an uninitialized int */
+j = *p;    /* store the value p POINTS to in j */
+#+END_SRC
+
+*** Getting an Address
+You can get the address of a name with ~&~.
+
+*** Dereferencing
+~*~ is *also* used to *dereference* the pointer!
 
 * Compilation
   * You can manually compile every =.c= file with =gcc=

@@ -260,6 +260,238 @@ You can get the address of a name with ~&~.
 *** Dereferencing
 ~*~ is *also* used to *dereference* the pointer!
 
+** /Why/ have pointers?
+   * Direct access to memory
+   * Have to manage memory yourself
+   * /ALWAYS/ Passed-by-Value
+   * This even happens on composite data structures, like ~struct~
+   * Pointers enable us to perform /actions at a distance/
+#+BEGIN_SRC c
+void bar(int *p) {
+	*p = ...; /* Some change to some remote var. */
+	return;
+}
+
+void bat(int *p) {
+	bar(p);
+}
+
+void baz(int *p) {
+	bat(p);
+}
+
+int main() {
+	int i;
+	baz(&i); /* i is only changed once we reach bar(). */
+	return 0;
+}
+#+END_SRC
+
+#+BEGIN_SRC c
+void swap(int x, int y);
+void p_swap(int *p, int *q);
+
+int main() {
+	int a = 5, b = 10;
+	swap(a, b);
+	/* want a == 10, b == 5
+	 ,* swap() doesn't do that though. */
+	p_swap(&a, &b);
+	/* Pass memory addresses into p_swap, allowing for direct access.*/
+	return 0;
+}
+
+/* This uses call-by-value and does the swap in function-local variables.
+ ,* This means that the original a and b would NOT be changed. */
+void swap(int x, int y) {
+	int tmp = x;
+	x = y;
+	y = tmp;
+	return;
+}
+
+/* This uses call-by-reference and does the swap on the original memory locations.
+ ,* This means that the original a and b WOULD be changed. */
+void p_swap(int *p, int *q) {
+	int tmp = *p;
+	*p = *q;
+	*q = tmp;
+	return;
+}
+#+END_SRC
+
+**** Java doesn't really have pointers.
+     * Methods have primitives Passed-by-Value
+     * Objects are Passed-by-Reference
+
+** Uninitialized Pointers
+   * Are like all other uninitialized variables
+   * They contain garbage!
+   * If you dereference the pointer, you dereference garbage, which is undefined behavior.
+     - If you're lucky, this is a crash.
+     - If you're unlucky, unknown results may happen.
+
+** Null Pointers
+   * Never returned by the ~&~ operator.
+   * Safe to use as a sentinel value
+   * Written as ~0~ or ~NULL~ in /pointer context/
+     - Typically ~#define NULL 0~
+#+BEGIN_SRC c
+#define NULL 0
+
+int main() {
+	int i = 0;
+	int *p = NULL;
+
+	if (p) {
+		/* Like safe to dereference */
+	}
+	return 0;
+}
+#+END_SRC
+
+** ~void~ Pointer
+   * This is a pointer type that says there is no type
+~
+* Strings/Character Arrays
+  * The null character ~'\0'~ is helpful
+  * This character is used to terminate strings, as the last character
+  * It's numerical value is 0.
+  * Just ~'\0'~ terminated character arrays.
+  * ~printf~ treats strings as a character array terminated by a null character
+#+BEGIN_SRC c
+#include <stdio.h>
+
+int main() {
+	char *str = "hello world!"; /* 12 characters + 1 null character. */
+	str[12] = 10; /* Set the null terminator to 10. */
+	printf("%s", str);
+	return 0;
+}
+#+END_SRC
+
+#+BEGIN_SRC c
+#include <stdio.h>
+
+/* Shell will insert null terminators on each command line argument.
+ ,* argc has the number of things passed at once, including the program name. */
+int main(int argc, char *argv[]) {
+	int i;
+	for (i=0; i<argc; i++) {
+		printf("%s", argv[i]);
+		printf("%s", ((i < argc-1)? ", " : "\n"));
+	}
+
+#+END_SRC
+
+** String/Character Array Utilities
+   * All these string functions are in ~<string.h>~
+   * ~strcpy~ Copy characters from source to destination array, including the ~'\0'~
+#+BEGIN_SRC c
+void strcpy(char dst[], char src[]) {
+	int i = 0;
+	do {
+		dst[i] = src[i];
+	} while (src[i++] != '\0');
+}
+#+END_SRC
+   * ~strcat~ Attaches strings
+   * ~strcmp~ Compares strings byte-by-byte
+   * ~strlen~ Finds length of string by finding null character
+   * ~memcpy~ Copies the contents of one memory location to another
+   * ~memmove~ Moves the contents of one memory location to another
+
+* Arrays
+  * Contiguous region of memory
+  * Indexed by data type size
+  * Declared by ~type arr_name[size]~ and allocates memory
+    - This allocates the space from the function *stack*
+    - NOT the heap
+    - They *MUST* be statically sized
+  * There is *NO* metadata about the array
+    - Length
+    - *NO* implicit size
+    - *NO* bounds checking
+#+BEGIN_SRC c
+int main() {
+	int i_arr[10]; /* Array of 10 ints, 40 bytes */
+	char c_arr[80]; /* Array of 80 characters, 80 bytes */
+	char td_arr[24][80]; /* 2-D Array, 24 x 80 x 1 bytes*/
+	int *ip_arr[10]; /* Array of 10 pointers which point to ints, 40 or 80 bytes */
+
+	/* Dimension inferred if initialized when declaring. */
+	short grades[] = { 75, 90, 85, 100 };
+
+	/* Can omit the first dimension, as partial initialization is allowed. */
+	int sparse[][10] = { { 5, 3, 2},
+			     { 8, 10 },
+			     { 2 } };
+
+	/* If partially initialized, remaining components are 0 */
+	int zeros[1000] = { 0 }; /* Initialize all values to 0 */
+
+	/* Can also use designated initializers for specific indices */
+	int nifty[100] = { [0] = 0, /* Element zero has value 0*/
+			   [99] = 1000, /* Element 99 has value 1000 */
+			   [49] = 250 };
+#+END_SRC
+
+  * The array syntax is syntactic sugar for dereferencing a pointer and pointer arithmetic
+#+BEGIN_SRC c
+int main() {
+	int arr[100];
+	int *pa = arr;
+
+	pa[10] = 0;
+
+	printf("%d", *(pa + 10));
+	/* We can access a value in the array using pointer arithmetic.
+	 ,* This should return the 0 we just set. */
+	return 0;
+}
+#+END_SRC
+
+  * You can typecast arrays
+#+BEGIN_SRC c
+int main() {
+	int arr[100];
+	arr[10] = 0xDEADBEEF;
+
+	char *pa = (char *)arr;
+	pa[10] = 0;
+	printf("%s" arr[10]);
+	return 0;
+}
+#+END_SRC
+
+* Dynamic Memory Allocation
+  * Pointer will point into the heap
+  * C requires /explicit/ memory management
+    - Must request and free memory manually
+    - If you forget to free -> Memory Leak
+      + Only released once the process terminates
+    - If you free twice, in 2 different spots from 2 different pointers -> Double-Free
+    - If you free, but use the pointer again -> Dangling Pointer
+  * dynamic vs. ~static~ and local allocation.
+    - ~static~: Lifetime is forever
+    - Local: Lifetime is their LIFO system
+    - Dynamic: Can have a variable lifetime and have a variable storage size
+      + The pointer that controls it is the only way to find the memory you are given.
+*** Main Operations
+    * Defined in ~<stdlib.h>~
+      1) ~malloc~
+	 - /Type agnostic/
+	 - Doesn't care what data types we are *going* to store in the memory
+	 - Does this by returning a ~void*~
+      2) ~calloc~
+      3) ~realloc~
+      4) ~free~
+*** Other Languages
+    * languages like Java/Python who use /implicit/ memory management
+    * You allocate with the ~new~ reserved word.
+    * Then, the runtime system will scan the variables in-use and see if any cannot be reached
+    * If they cannot be reached, the memory will be deallocated.
+
 * Compilation
   * You can manually compile every =.c= file with =gcc=
   * This can be very painful for larger projects

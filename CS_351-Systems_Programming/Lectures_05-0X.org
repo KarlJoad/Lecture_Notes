@@ -479,18 +479,123 @@ int main() {
       + The pointer that controls it is the only way to find the memory you are given.
 *** Main Operations
     * Defined in ~<stdlib.h>~
+    * For every ~malloc~, there *MUST* be a corresponding ~free~
+    * All ~size~ are in bytes
       1) ~malloc~
 	 - /Type agnostic/
 	 - Doesn't care what data types we are *going* to store in the memory
 	 - Does this by returning a ~void*~
       2) ~calloc~
+	 - Takes the number of elements to initialize, and the size of each element
+	 - Zero-Initializes memory, sets all allocated memory to 0.
+	 - Still need to ~free~ afterwards.
       3) ~realloc~
+	 - Reallocates pointer to a different size.
       4) ~free~
+	 - Free the memory that is used by a pointer.
+
+#+BEGIN_SRC c
+#include <stdlib.h>
+
+int main(void) {
+	int i, j, k = 1;
+	int *jagged_arr[5]; /* Array of 5 pointers to ints */
+	for (i=0; i<5; i++) {
+		jagged_arr[i] = malloc(sizeof(int) * k);
+		for (j=0; j<k; j++) {
+			jagged_arr[i][j] = k;
+		}
+		k += 1;
+	}
+
+	/* Use jagged_arr */
+
+	for(i=0; i<5; i++) {
+		free(jagged_arr[i]);
+		/* You also need to free each of the [j] pointers as well.
+		 * This is a memory leak. */
+	}
+
+	return 0;
+}
+#+END_SRC
+
 *** Other Languages
-    * languages like Java/Python who use /implicit/ memory management
-    * You allocate with the ~new~ reserved word.
-    * Then, the runtime system will scan the variables in-use and see if any cannot be reached
+    * Languages like Java/Python use /implicit/ memory management
+    * You allocate new heap objects with keyword/reserved word.
+    * During execution, the runtime system (Virtual Machine) will scan the variables/pointers/references in-use and see if any cannot be reached
     * If they cannot be reached, the memory will be deallocated.
+    * This is a whole field of study in it of itself.
+
+** Valgrind
+  * Tells you if you have any memory leaks
+  * Can do many other things as well
+  *
+
+#+BEGIN_SRC c
+int **make_jagged_arr(int nrows, const int *dims) { ... }
+
+void free_jagged_arr(int **jarr, int nrows) {
+	int i;
+	free(jarr);
+	for(i = 0; i < nrows; i++)
+		free(jarr[i]);
+}
+
+int main() {
+	int **jarr = make_jagged_arr(5, (int [5]) {5, 4, 3, 2, 1});
+
+#+END_SRC
+
+* Composite Data Types
+  * This is /similar/ to objects in OOP, or ~datatype~ in Haskell
+
+** ~struct~
+   * Put multiple data types together and refer to them by name.
+   * You access the fields by using the ~.~ operator.
+#+BEGIN_SRC c
+/* Type Definition */
+struct point {
+	int x;
+	int y;
+}; /* Ending ';' is REQUIRED. */
+
+/* point declaration and allocation. */
+struct point pt;
+
+/* Pointer to a point struct */
+struct point *pp1;
+
+int main(void) {
+	pt.x = 10;
+	pt.y = -5;
+
+	struct point pt2 = {.x = 8, .y = 13 }; /* Declaration and Initialization. */
+
+	struct point *pp;
+	pp = &pt;
+
+	/* To access a field in pp, use the 2 syntaxes below. */
+	(*pp).x;
+	pp->x;
+
+	return 0;
+}
+#+END_SRC
+
+** ~union~
+   * When one type can potentially hold one value of a single type from a set of multiple types at the same time.
+
+** ~enum~
+   * One option among many.
+   * These are mutually exclusive values that something can take.
+
+** ~typedef~
+   * Allow you to change name of types
+#+BEGIN_SRC c
+/* typedef oldname newname; */
+typedef int int_t; /* int and int_t are aliases to the same type. */
+#+END_SRC
 
 * Compilation
   * You can manually compile every =.c= file with =gcc=

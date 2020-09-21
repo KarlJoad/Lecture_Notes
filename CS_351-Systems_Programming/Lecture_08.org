@@ -1,0 +1,3 @@
+#+TITLE: Lecture 08: Processes
+#+AUTHOR: Karl Hallsby
+#+DATE: September 21, 2020

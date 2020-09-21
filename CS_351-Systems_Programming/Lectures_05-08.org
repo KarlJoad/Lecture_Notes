@@ -1,4 +1,4 @@
-#+TITLE: Lectures 05-0X, A C Primer
+#+TITLE: Lectures 05-08, A C Primer
 #+AUTHOR: Karl Hallsby
 #+DATE: September 09, 2020
 

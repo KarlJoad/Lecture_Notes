@@ -1,3 +1,128 @@
 #+TITLE: Lecture 08: Processes
 #+AUTHOR: Karl Hallsby
 #+DATE: September 21, 2020
+
+* Processes
+  * /Process/ is a /program/ in execution
+    - Processes carry out what we want done
+  * You create a process every time you start a new program
+  * Programs describe what you want done
+  * Has the Code of your program
+  * Runtime data (Global, local, dynamic variables)
+  * Program Counter (PC)
+  * Registers
+    - Stack Pointer (SP)
+    - Frame Pointer (FP)
+    - Other Registers
+  * We require a /predictable/, /logical control flow/
+    - We need to start somewhere, typically with ~main~.
+    - Nothing should disrupt a program mid-execution.
+    - If this were to occur, the results are undefined.
+
+** Prevent Process Disruption
+   * Easiest way for a process to prevent this disruption is to "own" a CPU for its entire duration
+     - No other process can run on this core
+     - This prevents efficient multi-process/multitasking systems
+     - Malicious or poorly written program can "take over" the CPU
+     - An idle process (for example, waiting for user input) will underutilize the CPU
+   * The Operating System simulates the /seamless logical control flow/
+     - Keeps additional information about the process, /per-process metadata/
+       + Code
+       + Runtime data
+       + Registers
+       + Process Control Block
+	 * PID
+	 * CPU Usage
+	 * Memory Usage
+	 * Pending syscalls
+     - Uses this information so that processes can be interrupted, moved off a core, etc.
+     - The OS can also schedule processes according to some algorithm
+
+** Hardware Requirements
+To ensure this simulated seamlessness, we need:
+   1) Hardware mechanism to periodically interrupt the current process to load the OS
+      * /Periodic Clock Interrupt/
+   2) An OS procedure to decide which processes to run, in what order
+      * OS /Process Scheduler/
+   3) A routine for seamlessly transitioning between processes
+      * /Context Switch/
+      * These are a little expensive
+      * /External/ to a process's /logical control flow/
+      * Part of Exceptional Control Flow
+      * A context switch has no guarantee about if/when a process will start running again
+
+* Exceptional Control Flow
+#+BEGIN_SRC c
+int main(void) {
+	while (1) {
+		printf("Hello World!\n");
+	}
+
+	return 0;
+}
+#+END_SRC
+
+  * If an OS exception were to happen, the current program would be interrupted
+  * This process would be blocked, and the exception would be handled
+  * Once the exception is handled, the blocked program is reloaded *to the same point*
+  * The blocked process doesn't know that an exception occurred and continues as normal.
+
+** Synchronous Exceptions
+   * Synchronous Exceptions are caused by the *currently executing* instruction
+   * 3 subclasses
+     1. Traps - *Intentionally*  triggered by a process.
+	- Returning from a trap, the process resumes execution at the next logical instruction
+	- There could be a context switch to another process because of scheduling
+     2. Faults - *Unintentional* failure and may be recoverable or not.
+	- Segmentation Fault, unrecoverable
+	- Protection Fault
+	- Page Fault, recoverable
+	- Divide-by-zero, possibly recoverable
+	- A return from a from a fault might be possible by the handler fixing the problem.
+	- There may be a context switch after this.
+	  + If it was irrecoverable, then there *will* be a context switch, as this one terminates
+	  + If it was recoverable, then there *may* be a context switch, depending on the scheduler.
+     3. Aborts - *Unintentional* and *Irrecoverable*
+	- Process is terminated by the OS
+	- OS might terminate itself if there are other errors
+
+** Asynchronous Exceptions
+   * Caused by events *external* to the current process/instruction
+   * For example, on Unix-Like OSs, if you have a program running, ~Ctrl-C~ will send a ~SIGKILL~ signal
+   * This will terminate the program
+   * These are known as *interrupts*
+   * A few common interrupts:
+     - ~Ctrl-C~
+     - ~Ctrl-Alt-Del~
+     - The power button
+   * These are associated with specific processor (hardware) pins
+     - Checked after *every* CPU cycle
+     - Associated/handled with/by interupt handlers
+
+*** Typical Handling Procedure
+    1) Save Context
+    2) Load OS Context
+    3) Execute the Interrupt Handler
+    4) Load context for the next process given by the scheduler
+    5) Return to the next process
+
+These are fairly lightweight, but having more and more interrupts *will* affect performance.
+
+* Threads
+  * "Lightweight Process"
+  * Most processes have at least 1 thread
+  * OS sees threads and processes as similar things.
+    - They are scheduled the same way
+    - OS can sleep/block/wake threads the same way as processes
+  * Fewer things unique to each thread
+    - Can share global memory
+    - Can share the code of the program (Text of the process)
+  * Lighter to context switch between threads in a process than between threads
+    - Fewer things to reload and change for a context switch
+  * More memory to make a process than a thread
+  * Threads can communicate with each other through shared memory
+    - Processes use Pipes or Sockets
+    - Multithreaded programs can use global variables to communicate between threads
+  * You might have to synchronize threads by using:
+    - Locks
+    - Semaphores

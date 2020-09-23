@@ -1,0 +1,145 @@
+#+TITLE: Lecture 09: Process Management
+#+AUTHOR: Karl Hallsby
+#+DATE: September 23, 2020
+
+* Making Processes
+#+BEGIN_SRC c
+#include <unistd.h>
+
+/* typedef int pid_t */
+
+pid_t fork();
+/* Makes a system call to trap to the OS.
+ ,* This requests the OS to create a new process.
+ ,* This is mostly a duplicate of the original. */
+#+END_SRC
+
+  * ~fork~ creates a copy of the current process
+  * This child process is a duplicate of the parent process
+    - Some metadata is different, but the binary image is the same
+    - Starts with the same:
+      + PC, the child starts *at the same place in the program as the parent*
+      + SP
+      + FP
+      + Registers
+      + Open Files
+  * ~fork~ returns *twice*
+    - Once to the parent process, with the ~pid~ of the child (>0).
+    - Once to the child process, with the return code of ~fork~ (sentinel value of 0).
+    - There is usually a split in the logical control flow between the parent and child.
+  * ~pid_t~ is a system-wide unique process identifier
+    - This is technically an integer, so we can do normal integer arithmetic
+
+#+BEGIN_SRC c
+#include <unistd.h>
+#include <stdio.h>
+
+int main(void) {
+	fork();
+	printf("Hello World!\n");
+	return 0;
+}
+#+END_SRC
+
+  * This code will print "Hello World!" twice, but in no particular order.
+
+#+BEGIN_SRC c
+#include <unistd.h>
+#include <stdio.h>
+
+int main(void) {
+	fork();
+	fork();
+	printf("Hello World!\n");
+	return 0;
+}
+#+END_SRC
+
+  * This code will print "Hello World!" four time, but in no particular order.
+  * The main parent thread has 2 children, and the parent's first child makes another child.
+
+** Fork Bomb
+   * Just generates new processes as fast as possible.
+#+BEGIN_SRC c
+#include <unistd.h>
+
+int main() {
+	while(1)
+		fork();
+	return 0;
+}
+#+END_SRC
+
+** Using Processes
+#+BEGIN_SRC c
+#include <unistd.h>
+#include <stdio.h>
+
+void fork0() {
+	int pid = fork();
+	if (pid == 0) {
+		printf("Hello from child\n");
+	} else {
+		printf("Hello from parent\n");
+	}
+
+	return;
+}
+
+int main(void) {
+	fork0();
+	return 0;
+}
+#+END_SRC
+
+   * The results from this program executing is that both print statements are executed
+   * But, you are not guaranteed the order in which they execute
+     - Child prints first
+     - Parent prints first
+     - Child and parent print at the same time
+     - But, there is a lock for the screen, blocking other processes
+     - This lock is what makes the output text appear in order
+   * The parent and child typically have some kind of logical control flow to have them do different things
+
+** Fork Fails
+   * Most system calls will return ~-1~ on a failure
+   * The global variable ~errno~ is populated with the "cause" of the failure
+   *
+
+#+BEGIN_SRC c
+#include <errno.h>
+
+extern int errno;
+#+END_SRC
+
+* Terminating Processes
+  * The simplest way to terminate a process is for the main process to ~return~
+  * You can also use the ~exit~ call.
+    - This exits immediately
+    - This may prevent a normal ~return~
+  * UNIX convention is that exit status ~0~ is success
+  * Any other value is some error code
+
+** ~atexit~
+   * ~int atexit (void (*fn)());~
+   * Registers a function to be used before the program is ~exit~
+   * Call function before the ~exit~
+   * Just have to place the registration somewhere
+   * These handlers are inherited by children
+
+** Zombie Processes
+   * Terminating processes turn into /zombies/
+   * All processes are responsible for reaping their own (immediate) children
+     - If a program has 2 forks, the child of the child is *not* reaped by the original parent.
+   * You get rid of zombie processes by *killing* the parent processes
+     - Note that this is *not* terminating the process.
+   * A parent process is reaped by its starting process.
+     - If a process is completely orphaned, it transfers ownership to ~PID = 1~, which will then reap it
+
+* Problems
+** Race Condition
+   * Some unprotected shared memory has a flaw in its logical access
+   * If we don't protect it, then the value stored is in an inconsistent state
+   * Happens with /multi-threading/
+     - Doesn't happen with multi-processing
+     - Multi-processing makes a *full copy of memory*

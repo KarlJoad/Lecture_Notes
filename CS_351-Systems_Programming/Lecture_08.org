@@ -46,10 +46,17 @@ To ensure this simulated seamlessness, we need:
       * OS /Process Scheduler/
    3) A routine for seamlessly transitioning between processes
       * /Context Switch/
-      * These are a little expensive
+      * These are expensive
       * /External/ to a process's /logical control flow/
       * Part of Exceptional Control Flow
       * A context switch has no guarantee about if/when a process will start running again
+      * A context switch is the only way to invoke system calls, accessing I/O, accessing network, etc.
+
+** Priority Scheduling
+   * Designate priorities for processes
+   * This leads to some interesting issues
+   * Higher priority processes can starve others
+   *
 
 * Exceptional Control Flow
 #+BEGIN_SRC c
@@ -73,6 +80,7 @@ int main(void) {
      1. Traps - *Intentionally*  triggered by a process.
 	- Returning from a trap, the process resumes execution at the next logical instruction
 	- There could be a context switch to another process because of scheduling
+	- Usually made by a process making a system call (/syscall/)
      2. Faults - *Unintentional* failure and may be recoverable or not.
 	- Segmentation Fault, unrecoverable
 	- Protection Fault

@@ -136,7 +136,7 @@ extern int errno;
    * A parent process is reaped by its starting process.
      - If a process is completely orphaned, it transfers ownership to ~PID = 1~, which will then reap it
 
-* Problems
+* Problems with Multiprocessing
 ** Race Condition
    * Some unprotected shared memory has a flaw in its logical access
    * If we don't protect it, then the value stored is in an inconsistent state

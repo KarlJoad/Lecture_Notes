@@ -273,3 +273,28 @@ $ ./a.out
 Command completed
 #+END_SRC
 
+* Shell
+  * This was the original computer interface to the operating system.
+  * Essentially an infinite ~while~-loop to get a line of user input
+  * When a full input is achieved, ~forks~ itself and ~exec~ for the specified binary
+  * Shell will ~wait~ on the started process, by default
+    - This does *NOT* apply if you use the ~&~ symbol at the end
+    - No ~wait~ occurs
+  * *Essential Function*:
+    - Let user issue requests to the operating system
+    - Manage processes
+      + List
+      + Stop
+      + Terminate
+    - Browse and manipulate file system
+  * Essentially a REPL for the operating system.
+  * Distinguish between /foreground/ (~fg~) and /background/ (~bg~)
+    - ~fg~ processes "blocks" additional commands from being run
+    - Can have any number of ~bg~ processes at once
+  * Shell conventions:
+    - ~prog-name &~: Starts ~prog-name~ and runs it in the background
+    - ~fg~ and ~bg~ move a process into the ~fg~ or ~bg~, respectively
+  * We want a notification that a child has zombified, so that we can reap it
+    - This notification is the idea of Exceptional Control Flow
+    - These are /Signals/
+

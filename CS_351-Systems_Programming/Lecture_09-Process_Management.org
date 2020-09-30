@@ -298,3 +298,104 @@ Command completed
     - This notification is the idea of Exceptional Control Flow
     - These are /Signals/
 
+* Signals
+  * Signals are messages delivered by the kernel to the user processes
+    - These are in response to OS events (segfault)
+    - These are created at the request of another process
+  * These are delivered by a /handler function/ in the *receiving process*
+  * Life cycle of a signal.
+    1. Sending a signal to a process
+       - ~kill(pid_t pid, int sig)~ function is an example of a function that sends a signal.
+       - Give the process with ~pid~ the signal ~sig~.
+       - There is a list of signals with names and values.
+	 + ~1~ ~SIGHUP~: Terminate process, Terminal line hangup
+	 + ~2~ ~SIGINT~: Terminate process, Interrupt program.
+	 + ~3~ ~SIGQUIT~: Create core image, quits program
+       - [[*Shell Process Groups][Shell Process Groups]]
+    2. Registering a handler for a given signal
+       - Some signals cannot be caught by the process
+       - ~sig_t signal(int sig, sig_t func)~ Register function to a particular signal
+       - Children inherit their parent's signal handlers after a ~fork~.
+       - Lose them when you ~exec~ to another program.
+    3. Delivering a signal to a process (done by kernel)
+       - 2 bitmaps per process
+	 1) Pending
+	 2) Blocked
+       - Some signals cannot be delivered/blocked (~SIGKILL~, and others)
+       - Newly forked child inherits the parent's blocked bitmap, but pending vector is empty
+    4. Designing a signal handler
+
+#+BEGIN_SRC c
+#include <unistd.h>
+#include <sys/wait.h>
+
+int main() {
+	int stat; /* stat is for the status of the child. */
+	pid_t pid;
+	if ((pid = fork()) == 0)
+		while(1); /* Child goes into infinite while-loop. */
+	else {
+		kill(pid, SIGINT); /* Parent INTERRUPTs child with SIGINT*/
+		wait(&stat);
+		/* Signal handler in the parent to handle how a child handled a signal. */
+		if (WIFSIGNALED(stat))
+			psignal(WTERMSIG(stat), "Child term due to:");
+	}
+
+	return 0;
+}
+#+END_SRC
+
+  * It can be useful to send a signal to multiple processes at once.
+  * Children inherit a group ID ~pgid~ from parent when forked.
+    - The founder of the group becomes the group leader
+    - The group leader is the process where ~pid~ = ~pgid~.
+    - Become group leader by ~setpgrp~.
+    - These interact with signals
+    - If ~kill~ is given a negative value, it will kill that process group
+
+** Shell Process Groups
+   * For most processes started from a shell, they inherit the shell's process group ID
+   * This can be changed through the ~setpgrp~ function.
+     - If this is done, any subsequent child processes started by this one will inherit that new ~pgid~.
+
+** Registering Signal Handlers
+#+BEGIN_SRC c
+#include <stdio.h>
+
+#include <unistd.h>
+#include <stdlib.h>
+#include <sys/signal.h>
+
+pid_t cpid;
+
+void parent_handler(int sig) {
+	printf("Relay to child");
+	kill(-cpid, SIGINT);
+}
+
+void child_handler(int sig) {
+	printf("Child Dying");
+	exit(0);
+}
+
+int main() {
+	if((cpid = fork()) == 0) {
+		signal(SIGINT, child_handler);
+		setpgrp(); /* Child becomes group leader. */
+		while(1);
+	}
+
+	signal(SIGINT, parent_handler);
+	while(1);
+}
+#+END_SRC
+
+#+BEGIN_SRC bash
+$ ./a.out
+^CRelaying SIGINT to child
+Child Dying
+#+END_SRC
+
+** Adjusting Blocked signals
+

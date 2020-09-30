@@ -399,3 +399,20 @@ Child Dying
 
 ** Adjusting Blocked signals
 
+* UNIX Family Tree
+  * ~fork~ and ~exec~ are used by kernel too
+  * BIOS -> Bootloader -> Kernel
+    1) BIOS
+       - BIOS is on the motherboard
+       - Initializes things with proper default values
+       - Looks for bootable devices, like a bootloader
+    2) Bootloader
+       - Sits at the front of a disk's partition
+       - Tells CPU where to start loading the kernel from
+       - Loads the proper kernel into memory
+    3) Kernel
+       - Once the kernel has started, ~fork~ and ~exec~ can start happening
+       - Starts initializing various things of the system
+       - Does a ~fork~ and ~exec~ for each daemon, user process, etc.
+       - Login does an ~exec~ on itself to start something else
+       - Starts stuff for user-land processes too.

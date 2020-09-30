@@ -2,7 +2,7 @@
 #+AUTHOR: Karl Hallsby
 #+DATE: September 23, 2020
 
-* Making Processes
+* Making Processes, ~fork~
 #+BEGIN_SRC c
 #include <unistd.h>
 
@@ -112,7 +112,7 @@ int main(void) {
 extern int errno;
 #+END_SRC
 
-* Terminating Processes
+* Terminating Processes, ~exit~
   * The simplest way to terminate a process is for the main process to ~return~
   * You can also use the ~exit~ call.
     - This exits immediately

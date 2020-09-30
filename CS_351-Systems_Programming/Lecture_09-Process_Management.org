@@ -128,7 +128,12 @@ extern int errno;
    * These handlers are inherited by children
 
 ** Zombie Processes
-   * Terminating processes turn into /zombies/
+   * All processes become zombie processes eventually
+   * "Dead" but tracked by the OS
+     - PID remains in-use
+     - Exit status can be queried.
+   * Terminating/Terminated processes turn into /zombies/
+     - These are just processes that have completed and exited, but the parent has not used/reaped them yet.
    * All processes are responsible for reaping their own (immediate) children
      - If a program has 2 forks, the child of the child is *not* reaped by the original parent.
    * You get rid of zombie processes by *killing* the parent processes

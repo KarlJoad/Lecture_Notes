@@ -207,3 +207,64 @@ int main() {
 #+END_SRC
 
 
+* Changing the running program, ~exec~
+  * ~exec~ family of syscalls. All of these are front-ends to ~execve~.
+    1) ~execl~
+    2) ~execlp~
+    3) ~execv~
+    4) ~execvp~
+  * The variations in the family:
+    - ~l~: Args passed as list of strings to ~main()~
+    - ~v~: Args passed as array of strings to ~main()~
+    - ~p~: Path(s) to search for running program
+    - ~e~: Environment (Environment variables and other state) specified by the caller
+    - Each of these can be mixed to some extent.
+    - Only constant between all of these is that the first argument to the ~exec...~ function is the name of the file to execute.
+  * Execute a *new program* within the *current process context*
+    - This doesn't give a new ~PID~
+    - Replaces the binary image, in-place.
+  * Complements ~fork~
+  * When called, ~exec~ *never returns*
+    - Starts the execution of the new program.
+    - *REPLACES* the current process' running binary image
+
+#+BEGIN_SRC c
+#include <unistd.h>
+#include <stdio.h>
+
+int main() {
+	execl("/bin/echo", "/bin/echo",
+	      "hello", "world", (void *)0);
+	/* Everything below the execl becomes unreachable code, as the new
+	 ,* program REPLACES the original binary. */
+	printf("Done exec-ing...\n");
+	return 0;
+}
+#+END_SRC
+
+Results:
+#+BEGIN_SRC bash
+$ ./a.out
+hello world
+#+END_SRC
+
+#+BEGIN_SRC c
+int main() {
+	if (fork() == 0) {
+		execl("/bin/ls", "/bin/ls", "-l", (void *)0);
+		exit(0);
+	}
+	wait(NULL);
+	printf("Command Completed\n");
+	return 0;
+}
+#+END_SRC
+
+Results:
+#+BEGIN_SRC bash
+$ ./a.out
+-rwxr-xr-x 1 ... a.out
+-rwxr-xr-x 1 ... demo.c
+Command completed
+#+END_SRC
+

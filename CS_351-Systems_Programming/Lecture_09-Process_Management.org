@@ -398,6 +398,65 @@ Child Dying
 #+END_SRC
 
 ** Adjusting Blocked signals
+   * Use ~sigprocmask~, which takes 3 arguments
+     1) How to deal with the signals
+     2) The set of signals to modify
+     3) The previous set of signals
+
+#+BEGIN_SRC c
+#include <stdlib.h>
+#include <signal.h>
+
+int main(void) {
+	sigset_t mask;
+	sigemptyset(&mask);
+	sigaddset(&mask, SIGINT);
+	sigaddset(&mask, SIGALRM);
+
+/* Block the set of signals specified in `mask' */
+	sigprocmask(SIG_BLOCK, &mask, NULL);
+
+	return 0;
+}
+#+END_SRC
+
+   * Before resuming a process, the kernel computes ~pending & ~blocked~
+     - Remember that this is bitwise NOT (~~~) and bitwise AND (~&~)
+     - This determines which signals get delivered to the process before the process begins regular execution
+   * The bitmask is held in kernel memory
+   * There's no queue or counter for signals, as this is a bitmask
+     - However, they are dealt with in a particular order
+     - The order is from higher number to lower number, lower to higher priority (31 -> 0)
+   * If the same signal is received while that signal handler is running
+     - Nothing.
+     - The handler is already running
+   * If we receive a higher priority (lower-number) signal while handling a lower-priority one
+     - Preempt the lower priority handler with the higher one
+     - The higher priority will interrupt the higher priority and run it
+     - If possible, the lower-priority signal will be handled after the higher priority one is complete.
+
+** Takeaways
+   1) Signals can be delivered at /any time/
+      * Interrupt *anything NONATOMIC*
+      * Problematic if using global variables
+      * Minimize the use of global variables and their use in signal handlers
+	- If they are needed, use data that can be read/written atomically
+   2) A signal handler may execute in overlapping fashion (even with itself)
+      * When there are multiple signals to handle
+      * We prefer separate handlers for different signals
+	- Otherwise, signal handlers MUST be /reentrant/ (able to called again when already executing)
+   3) Execution of signal handlers for /separate/ signals may overlap
+      * Any functtions they call may overlap as well
+      * Keep signal handlers simple
+      * Minimize calls to other functions
+   4) Race conditions caused by concurrency because we cannot predict when:
+      * Child terminates
+      * A signal will arrive
+      * We need to ensure that certain sequences /cannot be interrupted/
+
+*** Block Signals
+    * Explicitly tell system you want to block handling a signal for a while
+
 
 * UNIX Family Tree
   * ~fork~ and ~exec~ are used by kernel too

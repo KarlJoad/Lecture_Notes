@@ -1,0 +1,161 @@
+#+TITLE: Lecture 10, Input and Output
+#+AUTHOR: Karl Hallsby
+#+DATE: October 05, 2020
+
+* IO
+  * In UNIX, I/O consists of:
+    - Disk
+    - Terminal
+    - Shared Memory
+    - Printer
+    - Network
+    - This is because UNIX sees everything as a file
+  * Vast number of different mechanisms
+  * But, a few common mechanisms and requirements:
+    - Read/Write Ops
+    - Metadata:
+      + Name
+      + Position
+      + Directory Name
+      + Creation Date
+      + Last Access Date
+      + IP Address
+      + MAC Address
+      + Sequence Number
+    - Robustness
+    - Thread-safety
+  * Concerns:
+    - How are I/O endpoints represented?
+      + File descriptor
+    - How to perform I/O?
+      + Byte at a time?
+      + Check that I/O completed?
+    - How to perform I/O /efficiently/?
+      + What are we optimizing?
+
+* I/O Devices
+  1) Block Device
+     * Access fix-sized blocks
+     * Typically have fixed size as well
+     * Support seeking and random access
+     * Typical Devices:
+       - Disk
+       - Memory
+  2) Character Device
+     * Character-by-character stream
+     * No seeking or random access
+     * Typical Devices:
+       - Network
+       - Mouse
+       - Keyboard
+
+** Filesystem
+   * The filesystem acts as a /namespace/ for devices
+   * /Regular files/ consist of ASCII or binary data
+     - Stored on block device
+     - Directories
+   * /Special Files/ may represent:
+     - Directories: Actually regular files with special settings
+     - In-memory structures
+     - Sockets
+     - Raw Devices
+
+** Files
+   * File is an OS abstraction
+     - Each file has unique *inode* data structure
+     - The inode tracks:
+       + Ownership
+       + Permissiosn
+       + Size
+       + Type
+       + Location
+       + Number of /links/
+     - Can access file using a fully qualified path
+
+*** vnode
+    * Every currently open file as a *single* in-memory inode, called "vnode"
+
+*** File Description
+    * Each open file is tracked by the kernel using an /open file description/ structure
+      - File descriptor
+      - Position
+      - Access Mode
+      - Pointer to the backing vnode
+      - Used in conjuction with the vnode
+      - There is an open file description for *each occurrence* of a file's opening
+    * For *each process*, the kernel maintains a table of pointers to its open file structures
+      - Table that points to each file descriptor, then those point to the backing vnodes
+    * The vnode, file description, and the open file description table are all in *kernel memory*
+      - User processes cannot touch this memory
+
+*** File Descriptor
+    * The user gets a number of the index into the open file description table, called the *file descriptor*
+      - FD ~0~ is STanDard INput (~STDIN~)
+      - FD ~1~ is STanDard OUTput (~STDOUT~)
+      - FD ~2~ is StanDard ERRor (~STDERR~)
+    * After opening a file, *all* file operations are performed using *file descriptors*
+    * This obscures kernel I/O and filesystem implementation details from the user
+    * This allows an /elegant, abstract/ I/O API
+
+* System-Level I/O API
+  * ~int open(const char* path, int oflag,...)~
+    - Loads vnode for file at ~path~
+    - ~oflag~ is a bitwise OR of ~O_RDONLY~, ~O_WONLY~, ...
+    - Creates and initializes a new file description in the table
+    - Returns the first unused file descriptor available
+    - If you open the same file twice, then you get a new file descriptor (a new file description is made), but it points to the same vnode
+  * ~int fstat(int fd, struct stat *buf)~
+    - Query for file metadata
+    - ~struct stat fstat.st_ino~ Get inode number
+    - ~struct stat fstat.st_size~ Get file size
+    - ~struct stat fstat.st_nlink~ Get number of hard links
+  * ~ssize_t read~
+  * ~ssize_t write~
+  * ~int close~
+
+  * ~int dup~
+    - Duplicates file descriptor
+  * ~int dup2~
+  * ~off_t lseek~
+
+** How Files work across ~fork~ and ~exec~
+   * Process inherits parent's open files across a ~fork~
+   * Process retains them after an ~exec~
+   * Parent and child share:
+     - File position
+     - File Access mode
+   * Sharing this file description allows for coordinating between separate process
+   * You can mirror this inside of a single process by using the ~dup~ syscall.
+
+** ~close~
+   * "Delete" the file descriptor and deallocate the file description
+   * Once all the file descriptions are closed, the vnode is freed and the file is really closed.
+
+** I/O Redirection
+   * Leverage file description conventions
+   * 0=stdin, 1=stdout, 2=stderr
+   * Use ~dup2~ to change the file descriptor to point to a file description /we/ specify.
+
+** ~read~
+   * Read from ~fd~ into the buffer ~buf~, up to ~nbytes~ read, in total
+   * Blocks for at least 1 byte
+   * Returns the number of bytes read
+
+** ~write~
+   * Write up to ~nbytes~ into the open file at ~fd~ from ~buf~
+   * Returns the number of bytes written
+
+** Why up to ~nbytes~?
+   * Reads:
+     - EOF
+     - Unreadablbe FD
+     - Slow file
+     - Interrupt
+   * Writes:
+     - Out of space
+     - Unwritable FD
+     - Slow File
+     - Interrupt
+   * These syscalls are the lowest-level I/O calls we can make for files
+     - The kernel's objective is to support maximum performance & minimum latency
+     -

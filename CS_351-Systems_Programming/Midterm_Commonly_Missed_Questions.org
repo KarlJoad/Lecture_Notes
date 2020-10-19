@@ -1,0 +1,93 @@
+#+TITLE: Commonly Missed Questions on Midterm
+#+AUTHOR: Karl Hallsby
+
+* What is the biggest disadvantage of Virtualization?
+Answer: Performance Overhead
+
+The other options are valid points, but they are not the biggest disadvantage.
+
+* Virtualization Storage Devices
+Answer: NVMe
+
+NVMe uses the PCIe bus, to transfer data much faster, without having to go through another controller.
+NVMe is completely solid-storage, so there is no latency in requesting data.
+
+* Version of GCC on Fourier?
+Answer: 6.2.0
+
+You can verify by SSH-ing to Fourier and running ~gcc --version~
+
+* C Advantages?
+Answer: Portability and Performance
+
+C is portable because code can be recompiled using a different compiler architecture.
+C allows us to use the same source code to compile a different binary.
+
+Java allows us to use the same "binary" on different systems because the JVM is the one that is compiled to the CPU's architecture.
+
+Memory Management (Also a valid answer)
+Java and Python does memory management implicitly with garbage collection
+In C, you must explicitly do this memory management, but it will be efficient and predictable.
+
+Exception handling is pretty complicated in C.
+
+Performance:
+C is faster than Java or Python, because it generates pure machine code.
+Java uses a JIT compiler in the JVM to optimize currently running code.
+However, it starts out as using in an interpreted state, and will slowly be compiled.
+Python is completely interpreted, so it is very slow.
+
+* Which operation incurs the least overhead?
+Answer: Function call and return
+Function calls are really ~JMP~s.
+Returning a value is a matter of putting the result somewhere well-defined, and another ~JMP~ back to the original position.
+
+~exec~:
+This completely replaces the current binary image with another.
+Because this is an interrupting system call, this is also quite expensive.
+You have to go to disk to grab the actual binary, load it to memory, then run it as a process.
+
+
+~printf~ call:
+This actually requires a system call to the kernel to print out.
+In addition, there is string interpolation that must be completed to replace the ~%d~ and like characters.
+Lastly, the screen has a kernel lock that synchronizes the output so only one process prints at a time.
+
+~fork~:
+This is an interrupting system call that makes a copy of the current process.
+This copies a lot of memory copying, file descriptors, signal handlers, and more.
+This add entries to the OS process table, getting a PID (requires synchronization).
+
+* Corresponding output?
+Answer: 001133 and 030311
+#+BEGIN_SRC c
+int main() {
+	fork(); /* Make 2 copies*/
+	printf("0");
+	if (fork() == 0) { /* Make another 2 copies, and have child enter if-statement. */
+		/* This next exec prints "1" */
+		execl("/bin/echo", "echo", "1", NULL);
+		fork();
+		printf("2");
+		/* We can't print a 2 unless the execl fails. If the exec is
+		 ,* successful, the fork and printf are never executed. */
+	}
+	printf("3");
+	return 0;
+}
+#+END_SRC
+
+* C type declaration ~int arr[10]~?
+Answer: Pointer to an array of 10 integers
+The array syntax ~[]~ is syntactic sugar for declaring a pointer.
+This also informs and allows the compiler to perform some *very* basic bounds checking.
+
+* Definitions in Headers and Declarations in Source?
+Answer: False
+
+Declarations go in .h, Definitions go in .c
+
+* Passing array as arg, array size passed too?
+Answer: False
+Because an array is a pointer, passing an array to a function is actually passing a pointer to the array.
+This means that the size is *not* passed along with the array.

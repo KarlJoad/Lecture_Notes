@@ -1,4 +1,4 @@
-#+TITLE: Lecture 10, Input and Output
+#+TITLE: Lectures 10-XX, Input and Output
 #+AUTHOR: Karl Hallsby
 #+DATE: October 05, 2020
 
@@ -98,6 +98,8 @@
     * This allows an /elegant, abstract/ I/O API
 
 * System-Level I/O API
+These are the lowest level I/O calls that can be made.
+Because of this, the kernel will attemp to maximuize performance and minimize latency.
   * ~int open(const char* path, int oflag,...)~
     - Loads vnode for file at ~path~
     - ~oflag~ is a bitwise OR of ~O_RDONLY~, ~O_WONLY~, ...
@@ -146,16 +148,47 @@
    * Returns the number of bytes written
 
 ** Why up to ~nbytes~?
+Essentially, /short counts/ can occur.
+The process asks the OS to print $n$ bytes but actually prints $k$ where $k < n$.
    * Reads:
      - EOF
-     - Unreadablbe FD
+     - Unreadable FD
      - Slow file
+     - Very slow disks might return less information at once than requested
      - Interrupt
    * Writes:
      - Out of space
      - Unwritable FD
      - Slow File
      - Interrupt
-   * These syscalls are the lowest-level I/O calls we can make for files
-     - The kernel's objective is to support maximum performance & minimum latency
-     -
+
+** Non-blocking Reads
+   * Returns to the process immediately
+
+* Buffering
+  * Read more bytes than we actually need into a separate /backing buffer/
+  * How it works:
+    1. The user requests an amount of data
+    2. The kernel fetches it, plus some extra
+    3. The extra is not presented to the user, but is stored in the kernel
+    4. If the user asks for the next part, which is in the extra part, the read returns immediately.
+  * Benefits:
+    1. You can do this in a user-level buffer as well.
+       + This way, we can operate on a buffer in-memory frequently, rather than having to go to disk constantly.
+    2. Avoid system calls
+    3. Process Future reads from that buffer
+
+** Generalizing
+For example, ~printf~ bundles together:
+   1. File Descriptor
+      * Way to access the file in the user-level code.
+   2. Backing Buffer
+      * Significantly reduces the cost of accessing stored information, because using memory access
+   3. Number of unused bytes
+   4. Pointer to the next byte
+
+Many higher-level output functions perform this set of bundled operations as well.
+
+#+BEGIN_SRC c
+
+#+END_SRC

@@ -1,0 +1,65 @@
+#+TITLE: Lectures 13-XX, Inter-Process Communication
+#+AUTHOR: Karl Hallsby
+#+DATE: October 21, 2020 - Month DD, YYYY
+
+* Why do we need IPC?
+  * OS kernel is great at /isolating/ processes from each other
+  * This is done to make programming easier
+  * If the OS were to *not* isolate each process
+    - Every process could read and/or write to any other process
+    - Memory integrity would not be guaranteed
+    - This would make control flow unpredictable
+  * But, allowing processes to communicate with each other makes them more useful
+    - They can exchange data and interact dynamically
+  * The original data exchange unit was the /file/
+    - BBS, FTP, Napster, BitTorrent
+  * But /dynamic/ data exchange is more interesting
+    - Instant messaging, VOIP, MMOGs
+
+* IPC
+  * Because the kernel enforces isolation, we need to request the kernel to allow processes to communicate
+  * These are called pipes allowing 2 processes to talk to each other
+    - These are similar to the shell pipe ~|~
+
+** Mechanisms
+   1. Signals
+      * This is a very limited form of communication, as the signal sends a very well-predefined message
+   2. (Regular) Files
+   3. Shared Memory
+   4. Unnamed and named pipes
+      * Easier to implement correct functionality
+      * Establish communications using 2 processes
+      * Explicit ~send~, ~receive~, ~read~, and ~write~.
+      * No going to file system, so no file system performance implications
+      * Technically shared memory, so you get memory speeds
+      * Difficult to go from one process to many different processes
+   5. File locks and semaphores
+      * File locks control concurrent access/modification of shared memory
+      * Semaphores control shared memory's access and modification
+   6. Sockets
+      * Used mainly for network communication
+      * Can be used on the local computer too though
+
+** Sockets
+   * Almost all modern computers use this today
+   * High Performance Computing doesn't use these, they use their own hardware solutions to reduce latency
+   * Sockets have a high overhead due to the software-defined network stacks
+
+* Challenges
+  1. Link/endpoing creation
+     * Naming the endpoint
+     * Looking up the endpoint
+     * Need a registry to keep track of this information
+  2. Data transmission
+     * Unidirectional or bidirectional?
+     * Single-sender or multi-sender and/or single-receiver or multi-receiver?
+     * Speed of the transmission medium/link?
+     * Capacity of the transmission medium?
+     * Message packetizing? How does the message stream get converted to packets?
+     * How is the transmission routed?
+  3. Data synchronization
+     * What is the behavior when there are multiple senders and/or receivers?
+     * What is the control required to synchronize?
+       - Is it done implicitly?
+       - Does it need to be done explicitly?
+       - Is there *ANY* synchronization?

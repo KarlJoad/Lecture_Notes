@@ -1,6 +1,6 @@
-#+TITLE: Lectures 10-XX, Input and Output
+#+TITLE: Lectures 10-13, Input and Output
 #+AUTHOR: Karl Hallsby
-#+DATE: October 05, 2020
+#+DATE: October 05, 2020 - October 21, 2020
 
 * IO
   * In UNIX, I/O consists of:
@@ -177,6 +177,10 @@ The process asks the OS to print $n$ bytes but actually prints $k$ where $k < n$
        + This way, we can operate on a buffer in-memory frequently, rather than having to go to disk constantly.
     2. Avoid system calls
     3. Process Future reads from that buffer
+  * There are also lower-level buffers/caches. They are present in:
+    - The kernel
+    - The disk itself
+  * By having many levels of buffers, we can create the illusion of great speeds, depending on the workload
 
 ** Generalizing
 For example, ~printf~ bundles together:
@@ -187,8 +191,32 @@ For example, ~printf~ bundles together:
    3. Number of unused bytes
    4. Pointer to the next byte
 
-Many higher-level output functions perform this set of bundled operations as well.
+** Easing Your Life
+   * There are a variety of syscalls that wrap ~open~ for you, so they open buffers for you, in kernel memory
+   * ~fclose~
+   * ~fflush~
+   * ~fgets~
+   * All from ~<stdio.h>~
+   * They operate on /stream/ objects, which are wrappers around a file descriptor and the associated buffer
+   * Stream buffers can absorb multiple writes before flushing to the underlying file
+     - An automatic write would be performed if the backing buffer is full, so we can empty the buffer.
+     - However, this means that if the data is *not* flushed from the buffer, then the data is lost.
+     - This could be a dangerous operation because the programmer might expect the data to be flushed/written immediately.
+   * Flushes happen:
+     - Buffer is full
+     - Normal Process Termination
+     - Newline (In a line-buffered stream), for example, printing to the screen.
+     - Explicitly, with ~fflush~
 
-#+BEGIN_SRC c
+* Performing both INput and Output
+  * ISO C99 standard 7.19.5.3 Paragraph 6
+  * Output shal not be followed by input without an intervening call to the ~fflush~ function.
+  * Input shall not be directly followed by output without an intervening call to a file positioning function.
 
-#+END_SRC
+* Summary/Things to Remember
+  * Buffered ~<stdio.h>~ functions help minimize system overhead and simplify I/O
+  * Use ~<stdio.h>~ whenever possible
+  * Beware of glitches
+  * Don't mix buffered and unbuffered I/O
+  * ~<stdio.h>~ type of I/O is not appropriate for some devices (Network)
+    - Use a low-level, robust I/O for network communications

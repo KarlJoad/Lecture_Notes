@@ -65,7 +65,7 @@
      - Each file has unique *inode* data structure
      - The inode tracks:
        + Ownership
-       + Permissiosn
+       + Permissions
        + Size
        + Type
        + Location
@@ -81,7 +81,7 @@
       - Position
       - Access Mode
       - Pointer to the backing vnode
-      - Used in conjuction with the vnode
+      - Used in conjunction with the vnode
       - There is an open file description for *each occurrence* of a file's opening
     * For *each process*, the kernel maintains a table of pointers to its open file structures
       - Table that points to each file descriptor, then those point to the backing vnodes
@@ -99,7 +99,7 @@
 
 * System-Level I/O API
 These are the lowest level I/O calls that can be made.
-Because of this, the kernel will attemp to maximuize performance and minimize latency.
+Because of this, the kernel will attempt to maximize performance and minimize latency.
   * ~int open(const char* path, int oflag,...)~
     - Loads vnode for file at ~path~
     - ~oflag~ is a bitwise OR of ~O_RDONLY~, ~O_WONLY~, ...
@@ -208,9 +208,9 @@ For example, ~printf~ bundles together:
      - Newline (In a line-buffered stream), for example, printing to the screen.
      - Explicitly, with ~fflush~
 
-* Performing both INput and Output
+* Performing both Input and Output
   * ISO C99 standard 7.19.5.3 Paragraph 6
-  * Output shal not be followed by input without an intervening call to the ~fflush~ function.
+  * Output shall not be followed by input without an intervening call to the ~fflush~ function.
   * Input shall not be directly followed by output without an intervening call to a file positioning function.
 
 * Summary/Things to Remember

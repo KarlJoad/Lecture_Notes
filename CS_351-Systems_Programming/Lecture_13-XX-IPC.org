@@ -22,23 +22,95 @@
     - These are similar to the shell pipe ~|~
 
 ** Mechanisms
-   1. Signals
-      * This is a very limited form of communication, as the signal sends a very well-predefined message
-   2. (Regular) Files
-   3. Shared Memory
-   4. Unnamed and named pipes
-      * Easier to implement correct functionality
-      * Establish communications using 2 processes
-      * Explicit ~send~, ~receive~, ~read~, and ~write~.
-      * No going to file system, so no file system performance implications
-      * Technically shared memory, so you get memory speeds
-      * Difficult to go from one process to many different processes
-   5. File locks and semaphores
-      * File locks control concurrent access/modification of shared memory
-      * Semaphores control shared memory's access and modification
-   6. Sockets
-      * Used mainly for network communication
-      * Can be used on the local computer too though
+*** Signals
+    * This is a very limited form of communication, as the signal sends a very well-predefined message
+    * Please refer to Signals section for greater detail.
+
+*** (Regular) Files
+    * This is not great for /dynamic/ IPC
+      - Dynamic IPC is data needed to be shared with other processes that changes during runtime
+    * *Very* good for /static/ IPC, such as configuration files.
+    * The backing store for the information is disk, making this a *very* slow way to work
+      - Typically 1-2 magnitudes of order slower than memory
+      - The process will wait for the information to come from disk, annd do nothing in the meantime.
+    * Coordinating file positions is tricky
+    * In general, people do not consider regular files as a mechanism for dynamic IPC
+
+*** Shared Memory
+    * Allow processes to share data stored in memory
+      - This does mean that we "sidestep" memory protections
+    * Very fast, but does have some safety problems.
+    * ~shm...~ APIs
+      - File descriptor based
+      - Memory map pages in
+    * This is the /fastest/ form of IPC
+      - The only overhead is the process switch to map the memory, which is unavoidable.
+
+**** API
+     * ~int shm_open(const char *(name)~
+     * ~int shm_unlink(const char *name)~
+       -
+       - You *MUST* explicitly remove shared memory
+       - Memory leaks are not resolved this way
+       - This is intended, because the OS doesn't know when a process is done with the memory.
+
+**** Synchronizing Shared Memory
+     * Signals is one option.
+       - Basic Idea
+	 1. Writer sends signal to reader
+	 2. Reader reads from memory
+	 3. Reader signals back to writer that it is done
+	 4. Writer removes the shared memory
+       - But, we cannot queue signals, so we cannot queue certain operations
+       - Signals also have some overhead as well.
+
+*** Pipes
+    * Easier to implement correct functionality
+    * Establish communications using 2 processes
+    * Explicit ~send~, ~receive~, ~read~, and ~write~.
+    * No going to file system, so no file system performance implications
+    * Difficult to go from one process to many different processes
+    * Technically shared memory, so you get memory speeds
+    * But, it is slower than shared memory, due to the kernel copying, the buffering, and the synchronization
+
+**** Unnamed Pipes
+***** API
+     * ~int pipe(int fds[2])~
+       - ~fds[0]~ is the read end
+       - ~fds[1]~ is the write end
+     * Finite size, defined in ~limits.h~
+     * ~read~ blocks for a minimum of 1 byte
+     * ~write~ blocks until it completes
+       * Writes smaller than the size of the pipe are atomic
+
+***** Shell Pipes
+     * These are unnamed pipes
+     * ~echo hello | wc~
+       - 2 Programs
+	 1. ~echo~ Prints the argument or stdin to stdout (potentially after expansion)
+	 2. ~wc~ Print the line count, the word count, and the character count
+     * Connect the stdout of one program to stdin of another
+
+**** Named Pipes
+     * Create a /special file/ at ~path~ in the file system
+     * Automatically performs an ~open~ too
+     * Then is available for ~read~ and ~write~
+     * This is bi-directional, but half-duplex
+       - You can "go both directions"
+       - But only one can send/receive at a time
+
+***** API
+      * ~int mkfifo (const char* path, mod_t perms)~
+
+*** File Locks and Semaphores
+    * File locks control concurrent access/modification of shared memory
+    * Semaphores control shared memory's access and modification
+    * Used so *concurrent* systems are made *predictable*
+
+*** Sockets
+    * Discussed in later section.
+    * Used mainly for network communication
+    * Can be used on the local computer too though
 
 ** Sockets
    * Almost all modern computers use this today
@@ -63,3 +135,23 @@
        - Is it done implicitly?
        - Does it need to be done explicitly?
        - Is there *ANY* synchronization?
+
+* Lab 3
+  * About File I/O
+  * The contents of what is being read and written do not matter
+  * Discard (Flush) the cached file in memory between tests
+    - Might need additional. commands inside the bash script
+  * We do *NOT* need to do anything with the data
+    - Check for bytes read/written
+      + Might need to perform this operation in a loop until the ~nbytes~ is correct.
+    - Check for errors
+    - The file contents does NOT matter.
+      + Could be empty
+      + Could use ~/dev/urandom~
+      + Might be more efficient to read/write binary data vs. ASCII data.
+  * Use timestamps from the ~time.h~ library. Time the following operations.
+    - Sequential - Read from beginning and read until the end of the file.
+      + Read/write a record size (Record size is the buffer size we allocate)
+    - Random
+      + Use a random number to seek a random location within the file
+      + Read/write a record size after the seek

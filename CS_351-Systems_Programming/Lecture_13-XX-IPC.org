@@ -111,11 +111,9 @@
     * Discussed in later section.
     * Used mainly for network communication
     * Can be used on the local computer too though
-
-** Sockets
-   * Almost all modern computers use this today
-   * High Performance Computing doesn't use these, they use their own hardware solutions to reduce latency
-   * Sockets have a high overhead due to the software-defined network stacks
+    * Almost all modern computers use this today
+    * High Performance Computing doesn't use these, they use their own hardware solutions to reduce latency
+    * Sockets have a high overhead due to the software-defined network stacks
 
 * Challenges
   1. Link/endpoing creation
@@ -135,6 +133,84 @@
        - Is it done implicitly?
        - Does it need to be done explicitly?
        - Is there *ANY* synchronization?
+
+* Synchronization
+  * Used so concurrent systems can be made predictable
+    - Bugs only show up under very random conditions
+  * Mechanisms we've used so far
+    - ~wait~
+      + Limited ability to do things
+    - ~kill~ and ~signal~
+      + Somewhat of a lousy way to communicate, we cannot queue and acannot handle multiple signals simultaneously.
+    - ~pipe~
+      + Implicit
+      + Allows for blocking calls to get info in the reading or writing.
+      + Simplifies synchronization from the user's perspective
+      + There is actually a synchronization mechanism in the kernel to keep this synchronized
+      + Limited by the interface of the pipe, the byte stream.
+      + You cannot read random things from random locations in the pipe.
+
+** UNIX IPC Mechanisms
+   * These mechanisms were specifically designed for synchronization
+   * They *MUST* be atomic
+     - Requires hardware *and* compiler support
+       + FAA
+       + CAS (Compare-And-Swap)
+       + SAT
+     - These instructions are *guaranteed* to be atomic.
+
+*** File Locks
+    * One of the most Commonly used synchronization mechanisms.
+    * Not the best from a performance perspective
+    * Each process's virtual "world" doesn't extend to the file system
+    * Concurrently reading a file from multiple processes is allowed, because that's a safe operation
+      - The file cannot be modified if opened in read-only mode.
+    * Concurrently modifying files can have ugly consequences
+      - If the flushes from the memory are aligned from the same point, data becomes garbled
+      - Potentially corrupted data
+      - Each process has its current file position pointer, which is independent between every other process
+      - Essentially a race condition
+    * The file lock prevents other processes from using a file.
+    * Locks are *NOT* preserved across a ~fork~.
+      - A child doesn't inherit its parent's locks
+    * A problem is that most file systems do not enforce file locking, rather it is advisory
+      - Mandatory file locking is /possible/, but the file system is required to support it
+    * *These are not deisgne dfor general-purpose synchronization*.
+
+**** API
+     * ~int fcntl(int fd, int cmd, struct flock)~
+     * ~cmd = {F_GETLK, F_SETLK, F_SETLKW}~
+       1. Test
+       2. Set
+       3. Set (wait)
+     * ~struct flock{ ... }~
+       - Type of lock
+       - How to get the lock
+       - ...
+
+*** Semaphore
+    * Allow 1 of N processes to access an arbitrary resource
+    * Allow M of N processes to access a resource
+    * Control the order in which processes run
+    * Synchronization primitive
+    * Object with an associated counter
+    * Usually initialize the counter greater than or equal to 0
+    * The ~sem_wait~ and ~sem_post~ *MUST* be atomic, particularly on their manipulation of the counter.
+
+**** API
+     * ~sem_t *sem_open(const char *name, int oflag, mode_t mode, unsigned int value);~
+     * ~sem_t *sem_open(const char *name, int oflag);~
+     * ~int sem_wait~
+     * ~int sem_post~
+
+*** Mutex
+    * In one of 2 states:
+      1. Locked
+      2. Unlocked
+
+*** Spinlock
+    * Busy polling
+    * Highly responsive, but wastes CPU time
 
 * Lab 3
   * About File I/O

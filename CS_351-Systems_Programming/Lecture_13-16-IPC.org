@@ -1,4 +1,4 @@
-#+TITLE: Lectures 13-XX, Inter-Process Communication
+#+TITLE: Lectures 13-16, Inter-Process Communication
 #+AUTHOR: Karl Hallsby
 #+DATE: October 21, 2020 - Month DD, YYYY
 
@@ -216,7 +216,7 @@
   * About File I/O
   * The contents of what is being read and written do not matter
   * Discard (Flush) the cached file in memory between tests
-    - Might need additional. commands inside the bash script
+    - Might need additional commands inside the bash script
   * We do *NOT* need to do anything with the data
     - Check for bytes read/written
       + Might need to perform this operation in a loop until the ~nbytes~ is correct.

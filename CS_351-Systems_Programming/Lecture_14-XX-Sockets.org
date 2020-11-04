@@ -1,0 +1,60 @@
+#+TITLE: Lecture 14-XX
+#+AUTHOR: Karl Hallsby
+#+DATE: November 02, 2020 - Month DD, YYYY
+
+* Communication Protocols
+  * Protocols are agreement and rules on communication
+  * These can be connection-oriented or connectionless
+  * These protocols are typically built with a layered architecture-
+    1. Physical
+    2. Data Link
+    3. Netowrk
+    4. Transport
+    5. Session
+    6. Presentation
+    7. Application
+  * These messages build off each other by wrapping the higher-level protocol in a lower one.
+
+** Physical
+   * How to encode 0s and 1s
+   * What voltages are used
+   * How long does a bit need to be signaled
+   * What doe sthe cable, plug, antenna look like?
+
+** Data Link
+   * How big is a frame
+   * Can I detect an error
+   * What marks an end of a frame
+   * How do I control access to a shared channel (Flow Control)
+
+** Network
+   * How to route packets
+   * Congestion control algorithm
+     - Traffic Shaping
+     - Flow Specifications
+     - Bandwidth reservation
+   * Accounting
+   * Fragment or combine packets
+
+** Transport Layer
+   * How to order messages and detect duplicates
+   * Error detection
+   * Retransmission
+   * Connection-oriented vs. Connectionless
+
+** Session and Presentation
+   *
+
+** Application
+   * What marks the subject field
+   * How to represent cursor movements
+   * Services
+     - SMTP
+     - FTP
+     - HTTP
+     - SNMP
+     - NFS
+     - NTP
+     - NNTP
+
+* Middleware Protocols

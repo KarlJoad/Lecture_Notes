@@ -1,6 +1,6 @@
-#+TITLE: Lecture 14-XX
+#+TITLE: Lecture 14-17
 #+AUTHOR: Karl Hallsby
-#+DATE: November 02, 2020 - Month DD, YYYY
+#+DATE: November 02, 2020 - November 11, 2020
 
 * Communication Protocols
   * Protocols are agreement and rules on communication
@@ -266,6 +266,13 @@ int main(int argc, char const *argv[]) {
    * Exception handling
    * Interface definition
 
+*** Binder
+    * Server starts up and calls port mapper
+    * Server stub calls ~svc_register~ to register the program number and version number
+    * This port mapper ensures the correct thing is run.
+    * The client starts with ~clnt_create~ to locate the server port
+    * Upon return, the client can call procesdures to the server.
+
 ** Steps
    1. Client procedure calls client stub in normal way
    2. Client stub build message and calls local OS (Marshaling)
@@ -308,6 +315,27 @@ int main(int argc, char const *argv[]) {
 ** Performance
    * The most important issue
    *
+
+** How to Use
+   1) Install with package manager
+   2) ~rpcinfo~ to check if installed
+   3) Write an ~add.x~ file
+   4) ~rpcgen -N -a add.x~
+   5) ~make all~
+   6) ~./add_server~
+   7) ~./add_client localhost~
+
+#+BEGIN_SRC c
+program ADDPROG { /* Program number */
+	version ADDVER { /* Version Number */
+		doubel add(double, double) = 1; /* Procedure Number */
+	} = 1; /* Version Number */
+} = 0x20000199; /* Program Number */
+#+END_SRC
+
+After running ~rpcgen~, you end up with a bunch of files:
+   * The code we are interested in is the ~.c~ and ~.h~ files.
+   * There are client-side and server-side pieces created.
 
 * Lab 4
   * Pipe, Socket, and RPC require us to split our logic

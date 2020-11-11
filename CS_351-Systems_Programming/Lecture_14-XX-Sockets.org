@@ -58,3 +58,228 @@
      - NNTP
 
 * Middleware Protocols
+
+* Sockets
+  * Message-oriented communication (Packets, byte oriented *stream*)
+    - Persistent
+    - Synchronicity
+    - These packets are routed through potentially multiple computers before reaching a destination
+    - You buffer the packets you receive to handle the data as it comes.
+  * Usable both inside the same machine and for remote communication
+    - Emacs (Emacs server + ~emacsclient~) is written to be usable over a socket on the local computer
+    - Remote communication happens for email, web browsing, etc.
+  * Server doesn't need to ~fork~ unless they want to communicate with multiple clients
+    - Can also use threads
+  * Client doesn't need to ~fork~ unless they want to communicate with multiple servers
+    - Can also use threads
+
+** Message-Oriented /Transient/ Communication
+*** Berkeley Socket
+| Primitive  | Meaning                                                                                                                                    |
+|------------+--------------------------------------------------------------------------------------------------------------------------------------------|
+| Sockets    | Communication End point. Looks like File Descriptor.                                                                                       |
+| Bind       | Attach a local address to a socket. Might have multiple IP addresses/host adapters. Which network interface to listen on.                  |
+| Listen     | Announce willingness to accept connections. Essentially a blocking call until a connection comes into the system.                          |
+| Accept     | Block caller until a connection request arrives. Have received notification you have received a connection and you allow it (Server-side). |
+| Connection | Actively attempt to establish a connection. (Client-end).                                                                                  |
+| Send       | Send some data over the connection.                                                                                                        |
+| Receive    | Receive some data over the connection.                                                                                                     |
+| Close      | Release this connection.                                                                                                                   |
+
+  * You need to denote a client vs. a server
+  * Servers behave as long-running processes
+    1. Socket
+    2. Bind
+    3. Listen on a specific port. Now blocks.
+       - If the parent forks, then the parent can stay here and accept new connections.
+    4. Accept
+    5. Send/Receive
+    6. Close (Usually client is the one that closes the connection)
+    7. Wait until a new connection. (Sometimes if the connection is closed, the process ends)
+  * Clients behave as shorter-running processes.
+    1. Connect
+    2. Send/Receive
+    3. Close
+
+#+BEGIN_SRC c server.c
+/* Server side C/C++ program to demonstrate socket programming. */
+#include <unistd.h>
+#include <stdio.h>
+#include <sys/socket.h>
+#include <stdlib.h>
+#include <netinet/in.h>
+#include <string.h>
+#define PORT 8080
+
+int main(int argc, char const *argv[]) {
+	int server_fd, new_socket, valread;
+	struct sockaddr_in address;
+	int opt = 1;
+	int addrlen = sizeof(address);
+	char buffer[1024] = {0};
+	char *hello = "Hello from Server";
+
+	/* Create socket file descriptor. */
+	if ((server_fd = socket(AF_INET, SOCK_STREAM, 0)) == 0) {
+		perror("socket failed");
+		exit(EXIT_FAILURE);
+	}
+
+	/* Forcefully attach socket to the PORT port. */
+	/* Use TCP/IP */
+	if (setsockopt(server_fd, SOL_SOCKET, SO_REUSEADDR | SO_REUSEPORT< &opt, sizeof(opt))) {
+		perror("setsockopt");
+		exit(EXIT_FAILURE);
+	}
+
+	address.sin_family = AF_INET;
+	address.sin_addr.s_addr = INADDR_ANY; /* Allow this port to listen on ALL IP Addresses */
+	address.sin_port = htons(PORT);
+
+	/* Forcefully attach socket to the PORT port. */
+	if (bind(server_fd, (struct sockaddr *)&address, sizeof(address)) < 0) {
+		perror("bind failure");
+		exit(EXIT_FAILURE);
+	}
+
+	/* fork here, child continues through this, and parent will stay on listen. */
+	if (listen(server_fd, 3) < 0) {
+		perror("listen");
+		exit(EXIT_FAILURE);
+	}
+
+	/* Socket accepts from client. */
+	if ((new_socket = accept(server_fd, (struct sockaddr*)&address, (socklen_t*)&addrlen)) < 0) {
+		perror("accept");
+		exit(EXIT_FAILURE);
+	}
+
+	/* Socket Receives data. */
+	valread = recv(new_socket, buffer, 1024, 0);
+	printf("%s\n", buffer);
+	/* Socket sends some data back. */
+	/* Have to be careful of architectural differences between 2 communicating machines. */
+	send(new_socket, hello, strlen(hello), 0);
+	printf("Hello message sent\n");
+	return 0;
+
+}
+#+END_SRC
+
+#+BEGIN_SRC c client.c
+/* Client side C/C++ program to demonstrate socket programming. */
+#include <stdio.h>
+#include <sys/socket.h>
+#include <arpa/inet.h>
+#include <unistd.h>
+#include <string.h>
+#define PORT 8080
+
+int main(int argc, char const *argv[]) {
+	int sock = 0, valread;
+	struct sockaddr_in serv_addr;
+	char *hello = "Hello from client";
+	char buffer[1024] = {0};
+	if ((sock = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
+	}
+	serv_addr.sin_family = AF_INET;
+	serv_addr.sin_port = htons(PORT);
+
+	// Convert IPv4 and IPv6 from text to binary.
+	if(inet_pton(AF_NET, "127.0.0.1", &serv_addr.sin_addr) <= 0) {
+		perror("\nInvalid address/Address not supported.\n");
+		return -1;
+	}
+
+	/* connect does eventually timeout. */
+	if(connect(sock, (struct sockaddr *)&serv_addr, sizeof(serv_addr)) < 0) {
+		perror("\nConnection Failed \n");
+		return -1;
+	}
+
+	send(sock, hello, strlen(hello), 0);
+	printf("Hello message sent\n");
+	valread = recv(sock, buffer, 1024);
+	printf("%s\n", buffer);
+	return 0;
+}
+#+END_SRC
+
+*** MPI (Message Passing Interface)
+    * Berkeley sockets are designed for general-purpose network communication
+      - Simple send/receive primitives
+      - General-purpose protocol stacks such as TCP/IP
+      - These primitives are very heavy, because of the all the work that goes into a network stack
+    * Abstraction of these kinds of sockets are not suitable for other protocols in clusters of workstations or massively parallel systems.
+      - New more advanced primitives
+    * There is a large number of incompatible proprietary libraries and protocols
+      - This demands a standard interface to be used, called Message Passing Interface (MPI)
+    * Reference [[https://www.mcs.anl.gov/mpi/]]
+    * MPI
+      - hardware independent
+      - Primarily for highly parallel applications
+      - Transient communication
+      - *MUCH* lower latency
+    * Key idea here is that communication is done between groups of processes
+      - Each endpoint is a ~(groupID, processID)~ pair
+    * Supports most forms of communication
+
+| Primitive | Meaning                 |
+|-----------+-------------------------|
+| MPI_bsend | Append outgoing message |
+| MPI_...   |                         |
+
+** Message-Oriented /Persistent/ Communication
+   *
+
+* Remote Procedure Calls (RPC)
+  * How do we make "distributed computing look like traditional computing"?
+  * The standard Client-Server protocol provide usable mechanisms for services in distributed systems
+    - But, these require explicit communication
+    - Send-Receive Paradigm
+  * Can we use procedure calls to do this?
+    - The goal here is to make a remote procedure call look like a local procedure call
+  * In distributed system, the callee may be a completely different system from the one executing
+
+** Design Issues
+   * Parameter passing
+     - Local:
+       1. Parameters passed on the stack before jumping elsewhere
+       2. The stack holds the parameters and the possible local variables until you finish the call.
+       3. Parameters can be call-by-value or call-by-reference
+     - Remote:
+       1. Simulate parameter passing with *Stubs and Marshaling*
+	  * Client makes procedure call to client stub
+	  * Server written as a standard procedure
+	  * Stubs take care of packaging arguments and sending messages
+	  * The packaging is called marshaling
+	  * Stub compiler generates stubs automatically from specifications in an /Interface Definition Language/ (IDL)
+     - Global variables?
+       1.
+   * Binding
+   * Reliability
+     - How to handle failures
+     - Message loss
+     - Client crash
+     - Server crash
+   * Performance and implementation issues
+   * Exception handling
+   * Interface definition
+
+** Steps
+   1. Client procedure calls client stub in normal way
+   2. Client stub build message and calls local OS (Marshaling)
+   3. Client's OS sends message to remote OS (Actual socket send happens here)
+   4. Remote OS gives message to server stub
+   5. Server stub unpacks parameters, calls server (Can also call multiple functions, need to determine the parameters passed).
+   6. Server does work and returns results to the server-side stub
+   7. Server stub marshals the message and calls the local OS
+   8. Server's OS sends message to client's OS
+   9. Client's OS gives message to client stub
+   10. Stub unpacks the result and return to the client
+* Lab 4
+  * Pipe, Socket, and RPC require us to split our logic
+    - ~fork~
+    - Put these each in a different file
+  * The file with ~main()~ will become the "client"
+  * ~fork~ for a server process that will do the work for us

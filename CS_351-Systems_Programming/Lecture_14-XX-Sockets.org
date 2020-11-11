@@ -277,6 +277,38 @@ int main(int argc, char const *argv[]) {
    8. Server's OS sends message to client's OS
    9. Client's OS gives message to client stub
    10. Stub unpacks the result and return to the client
+
+** Marshaling
+   * A large issue is that different machines have different data formats:
+     - Intel: Little Endian
+     - SPARC: Big Endian
+   * Binding:
+     - How does a client locate a server?
+     - The one binding can be a bottleneck
+     - The one binding can perform load balancing
+   * Failure Semantics:
+     - Client unable to locate server: Return error
+     - Lost request messages: Simple timeout mechanisms
+     - Lost Replies: Time out mechanisms
+       + Make the operation idempotent
+       + Use sequence numbers and mark for retransmission
+     - Server failures: Did the failure occur before or after the operation
+       + At least once semantics (SUNRPC)
+       + At most once
+       + No guarantee
+     - Client Crash
+       + Client sends request then crashes
+       + Orphans can create problems
+       + Solutions:
+	 * Extermination
+	 * Reincarnation
+	 * Gentle Reincarnation
+	 * Expiration
+
+** Performance
+   * The most important issue
+   *
+
 * Lab 4
   * Pipe, Socket, and RPC require us to split our logic
     - ~fork~

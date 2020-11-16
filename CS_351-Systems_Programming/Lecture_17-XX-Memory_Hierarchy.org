@@ -78,7 +78,77 @@
 |------------------------------+--------------+--------------------+----------|
 | Registers                    | 8-32 words   | 0-1 cycles         | ns       |
 | On-board SRAM (L1/L2 Cache)  | 32-256 KiB   | 1-3 cycles         | ns       |
-| Off-board SRAN (L2/L3 Cache) | 256KiB-16MiB | ~10 cycles         | ns       |
+| Off-board SRAM (L2/L3 Cache) | 256KiB-16MiB | ~10 cycles         | ns       |
 | DRAM                         | 128MiB-64GiB | ~100 cycles        | ns       |
 | SSD                          | \leq 1TiB    | ~10,000 cycles     | \micro s |
 | HDD                          | \leq 4TiB    | ~10,000,000 cycles | ms       |
+
+** Costs
+| Device      | Price ($/TiB) |
+|-------------+---------------|
+| SATA HDD    |            38 |
+| Flash USB   |            35 |
+| SATA SSD    |           100 |
+| NVMe SSD    |           130 |
+| Optane      |          1103 |
+| DDR4 Memory |          7968 |
+
+** Memory Requirements
+   * A lot of memory
+   * Fast access to memory
+   * Don't want to spend much money
+
+
+* Memory Hierarchy
+  Starting at high speeds, low capacities
+  1. CPU
+  2. CPU Registers
+  3. SRAM CPU Caches
+  4. DRAM Main memory
+  5. Storage media (SSD/HDD)
+  6. Remote Storage
+
+** Main Idea
+   * Use the /fast, but scarce/ memory as much as possible.
+   * Fall back on the /slow but plentiful/ kind when necessary.
+
+** Caching
+   * Cache (Verb): Store away for future use.
+   * Cache (Noun): For computing, an auxiliary memory from which higher-speed retrieval is possible.
+   * There are a variety of algorithms to determine which data is evicted from the cache
+   * Caching and replication are /VERY/ different.
+   * Adding caches should /not/ affect the performance of the program
+   * /What/ data do we want to cache?
+   * Where do we store cached data?
+     - How do we /map/ the address k to a cache slot?
+     - Remember that SRAM \ll DRAM
+     - You can't fit everything in memory in the cache
+
+*** How it Works
+**** SRAM cache starts empty
+     1. CPU requests memory data at a memory address, k
+     2. The ~fetch~ instruction fetches the data from DRAM (or lower storage media)
+     3. /Cache/ data in the SRAM for later use
+
+**** SRAM Cache is full
+     1. CPU Requests data at memory address, k
+     2. Check SRAM for cached data first
+	* If it is present, then a cache hit occurs, return directly
+     3. If it is *NOT* present, then a cache miss occurs, request from memory like normal
+
+*** Localities of Reference
+    * We need to maximize the performance of caching of memory
+    * There are 2 main schools of thought:
+
+**** Temporal locality
+     * Based on how closely related the pieces of data related in time.
+     * If a datum was accessed recently, it's likely to be accessed again soon.
+     * For example, accessing a loop counter
+     * For example, calling a function repeatedly (recursion)
+
+**** Spatial Locality
+     * Based on how closely related the pieces of data are related in memory space.
+     * After accessing data at a given address, data nearby is likely to be accessed
+     * If a datum was accessed, grab the surrounding data too.
+     * For example, the contents of a loop
+     * For example, accessing elements on an array

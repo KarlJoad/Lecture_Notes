@@ -98,7 +98,6 @@
    * Fast access to memory
    * Don't want to spend much money
 
-
 * Memory Hierarchy
   Starting at high speeds, low capacities
   1. CPU
@@ -152,3 +151,55 @@
      * If a datum was accessed, grab the surrounding data too.
      * For example, the contents of a loop
      * For example, accessing elements on an array
+
+* Lab 5
+  * Need to be sure that the loop counter can deal with the possibility fo overflowing
+  * Probably should use ~unsigned
+
+2 Ways we will measure performance
+  1. Arithmetic Operations (~flops~)
+     - Will likely have little impact due to memory hierarchy
+     - Arithmetic operations per second
+     - Will need to disassemble the for-loop to figure out how many instructions we are executing
+     - *You* can't make the loop faster:
+       + The compiler can optimize these, usually through loop unrolling.
+	 * You "unroll" the loop so that you perform multiple iterations before looping
+       + Manually "unroll" so that you have multiple arithmetic operations before looping
+	 * Instruction-level parallelism
+	 * Certain instructions can run concurrently without programmer input
+	 * For example, you fetch new code while executing the current instruction
+     - 2 types of data
+       1. Single precision (4 byte ~int~ data types)
+       2. Double precision (8-byte ~double~ data types)
+     - Size:
+       1. ~small~: 10 billion (10^10) operations
+       2. ~medium~: 100 billion (10^11) operations
+       3. ~large~: 1000 billion (10^12) operations
+     - Threads:
+       1. 1 worker thread
+       2. 2 worker threads
+	  * Each thread has half of the operations
+       3. 4 worker threads
+	  * Each thread has a quarter of the operations
+  2. Matrix Multiplication (~matrix~)
+     - Memory hierarchy will have a massive impact on this.
+     - WILL need to ~malloc~ or ~calloc~
+       + ~calloc~ has the problem of initializing memory before returning it
+     - Implement matrix multiplication
+       + Naive implementation is pretty simple (~10 LoC)
+       + 3 nested ~for~-loops
+       + Easy and straightforward
+       + Time complexity is O(n^3)
+     - a = b + c*d
+       + Fuse-Multiply-Add
+       + More efficient than the 2 pure mathematical operations
+     - Size:
+       1. ~small~: 1024x1024 matrices
+       2. ~medium~: 4096x4096 matrices
+       3. ~large~: 16384x16384 matrices
+     - Threads:
+       1. 1 worker thread
+       2. 2 worker threads
+       3. 4 worker threads
+       4. Synchronization is needed for the output matrix
+	  * Although, this is pretty simple to get working

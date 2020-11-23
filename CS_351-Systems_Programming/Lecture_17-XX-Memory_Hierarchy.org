@@ -203,3 +203,93 @@
        3. 4 worker threads
        4. Synchronization is needed for the output matrix
 	  * Although, this is pretty simple to get working
+#+BEGIN_SRC c
+void multiply(double** mat1, double** mat2, double** res, int size) {
+	int i, j, k;
+	for(i = 0; i < size; i++) {
+		for(j = 0; j < size; j++) {
+			res[i][j] = 0;
+			for(k = 0; k < size; k++) {
+				res[i][j] = mat1[i][k] * mat2[k][j];
+			}
+		}
+	}
+}
+#+END_SRC
+
+** Instruction-Level Parallelism
+  * Optimizations can be performed by making a later instruction depends on 2 previous ones
+  * The compiler can run these 2 instructions in parallel
+#+BEGIN_SRC c
+e = a+b;
+f = c+d;
+m = e*f;
+#+END_SRC
+
+** Fused Multiply-Add
+   * a \leftarrow a + (b \times c)
+   * This multi-step arithmetic expression can be performed in 1 instruction
+
+** Other Optimizations
+   * GCC compiler optimizations
+   * Matrix Transpose
+   * Find out the size of cache lines
+   * Find the size of the L1 Cache
+   * Multithreading without any locks on matrices using static work partitioning
+   * Give compiler hints to assign certain variables to registers
+     - In C, this is done with the ~register~ keyword.
+   * Explore different instructions for reading from the memory to do something
+
+* PThreads
+  * Requires the ~-lpthread~ link flag for compilation
+  * Requires ~#include <pthread.h>~
+
+* Lab Extra Credit 2 - Benchmark Thread Synchronization Primitives
+  * Mode
+    1. No synchronization
+    2. Mutex
+    3. Semaphore
+    4. Spinlock
+    5. Atomic
+  * Size
+    1. Small (100 million operations) 10^{8}
+    2. Large (1 billion operations) 10^{9}
+  * Threads
+    1. 1 Thread
+    2. 2 Threads
+    3. 4 Threads
+  * Metrics
+    1. Throughput
+       - Measure the rate at which the counter can be incremented per second
+       - Use *ONLY* the large size
+       - Throughput is calculated for each thread individually
+       - All results should be aggregated to get the final throughput value
+    2. Latency
+       - Measure each individual increment operation and store it in memory
+       - Use *ONLY* the small size
+    3. Timing
+       1. Use number of CPU cycles
+       2. Need to get nanosecond resolution on these operations
+
+* Lab Extra Credit 3 - Moore's Law Essay
+  * Use the report in [[*Lab Extra Credit 2 - Benchmark Thread Synchronization Primitives][Lab Extra Credit 2 - Benchmark Thread Synchronization Primitives]] as an example
+
+* Lab Extra Credit 4 - ~memcpy~ and ~memset~
+  * These allow us to initialize or move a piece of memory around
+  * Sizes
+    1. Small, 4KiB
+    2. Medium, 4MiB
+    3. Large, 4GiB
+  * Implement your own ~my_memcpy~ and ~my_memset~ to try to improve the performance of these
+    - Read into SSE and AVX instructions
+    - Look into different compilers
+      + GCC
+      + LLVM
+      + ICC
+    - Explore optimization flags
+    - Parallelize these functions using PThreads
+    - Use Valgrind to profile the code
+    - If our version doesn't improve on the normal versions, won't get full points.
+  * Measure throughput in bytes/second of each operation
+    - Might need to perform multiple ~memset~ or ~memcpy~ operations to get accurate timing
+    - An operation on just a single buffer will likely require cycle-accurate timing

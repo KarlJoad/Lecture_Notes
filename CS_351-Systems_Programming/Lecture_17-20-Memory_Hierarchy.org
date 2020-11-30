@@ -1,6 +1,6 @@
-#+TITLE: Lecture 17-XX
+#+TITLE: Lecture 17-20
 #+AUTHOR: Karl Hallsby
-#+DATE: November 11, 2020 - Month DD, YYYY
+#+DATE: November 11, 2020 - November 23, 2020
 
 * Recall
   * Von Neumann Architecture

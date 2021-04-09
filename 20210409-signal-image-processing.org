@@ -1,0 +1,47 @@
+#+TITLE: Signal and Image Processing in Tomographic Imaging
+
+* Outline
+  * Linear equations to infer numbers in hidden matrix
+  * Lin eqns for tomographics imaging
+  * Signal/image processing problems in tomographic images
+
+* What is Tomographic Imaging?
+  * Use imaging to create 3D images of the human body (primarily the brain)
+  * Done by imaging slices of the brain in each of the 3 dimensions, and stitching them together
+  * Obtain images from computation (without having to cut open the patient open)
+  * CT Image -> Computed Tomography Image
+
+** Projections
+   * Given a 2x2 matrix
+   * Projection 1 is sum of horizontal components
+   * Projection 2 is sum of vertical components
+   * Does not scale up beyond a 2x2
+	 - In 3x3, you get 9 equations and 6 unknowns
+	 - Need to also get Projection 3, the sum of each main diagonal
+   * To scale up to nxn, then you must have n different projections at n different projection angles
+
+** X-Rays and CT Scanning
+   * X-Ray computes the "horizontal sum" (line integral) of the attenuation coefficient along the X-Ray path
+   * In CT scan, you take images at different angular directions to the human body, to take many 2D images
+   * These 2D arrays are reconstructed in a 3D way
+	 - Pixel = Array element
+	 - The pixel value is the attentuation factor (brighter is the more x-ray absorbing mass)
+   * $g = Hf$
+	 - $g$ is Projection data
+	 - $H$ is the Projection operator
+	 - $f$ is the image matrix (unknown)
+	 - Want $f = H^{-1}g$
+   * Difficult because:
+	 - $H$ is usually ill-conditioned (noninvertible) and too large to compute numerically
+	 - $g$ suffers from noise in measurement
+	 - Many other degrading factors: Modeling, attenuation, scatter, patient motion, etc.
+   * Let $\tilde{g} = g + n$ to denote measurement with noise
+   * $f = H^{-1} \tilde{g} = H^{-1} g + H^{-1} n$
+   * Computing $H^{-1}$ is still problematic because it is ill-conditioned (noninvertible)
+	 - Can model the result by using statistical estimation of the collected data
+	 - Can also model by using post-reconstruction filtering
+	   + Requires knowing how to design the best filter.
+	   + The noise is dependent on the signal, so filtering the noise will also remove the useful signals
+	   + There is a correlation between the two signals
+   * We must make the *correct medical diagnosis*, we do *not* need a pretty picture.
+   * To make the post-reconstruction filter, the we can use a deep learning model to create better filters
